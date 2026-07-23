@@ -1,0 +1,9 @@
+services:
+  manager-api:
+    build: .
+    container_name: vm-manager-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+    restart: unless-stopped

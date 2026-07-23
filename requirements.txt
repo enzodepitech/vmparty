@@ -1,0 +1,5 @@
+fastapi>0.108.0
+uvicorn
+jinja2
+python-multipart
+PyYAML

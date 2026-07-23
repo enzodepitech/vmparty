@@ -1,0 +1,22 @@
+---
+- name: Provisionner les VMs/LXCs sur Proxmox
+  hosts: localhost
+  connection: local
+  vars_files:
+    - ../storage/exports/vars.yml
+
+  tasks:
+    - name: Create VMs
+      community.general.proxmox_lxc:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "api_token"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        vmid: "{{ item.vmid }}"
+        hostname: "{{ item.name }}"
+        node: "pve"
+        ostemplate: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
+        netif: '{"net0":"name=eth0,bridge=vmbr0,ip={{ item.ip }},gw=192.168.1.1"}'
+        state: present
+        start_it: yes
+      loop: "{{ vms }}"

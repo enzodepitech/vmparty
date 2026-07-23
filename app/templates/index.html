@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VM & Guacamole Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 p-8 font-sans">
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Group VM & Guacamole Configuration</h1>
+      
+      <!-- Add Configuration Card -->
+      <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-700">Add New Team Configuration</h2>
+        <form action="/add" method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <input type="text" name="team_name" placeholder="Team Name (e.g. Team A)" required class="border p-2 rounded w-full">
+          <input type="number" name="vm_id" placeholder="VM ID (e.g. 101)" required class="border p-2 rounded w-full">
+          <input type="text" name="vm_ip" placeholder="VM IP (e.g. 192.168.1.101)" required class="border p-2 rounded w-full">
+          <input type="text" name="student_emails" placeholder="Emails (comma separated)" required class="border p-2 rounded w-full">
+          <button type="submit" class="md:col-span-4 bg-blue-600 text-white py-2 rounded font-medium hover:bg-blue-700 transition">Add Configuration</button>
+        </form>
+      </div>
+
+      <!-- Configurations Table -->
+      <div class="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-gray-800 text-white">
+              <th class="p-4">Team</th>
+              <th class="p-4">VM ID</th>
+              <th class="p-4">VM IP</th>
+              <th class="p-4">Student Members</th>
+              <th class="p-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for config in configs %}
+              <tr class="border-b hover:bg-gray-50">
+                <form action="/edit/{{ config.id }}" method="POST">
+                  <td class="p-4"><input type="text" name="team_name" value="{{ config.team_name }}" class="border p-1 rounded w-full"></td>
+                  <td class="p-4"><input type="number" name="vm_id" value="{{ config.vm_id }}" class="border p-1 rounded w-20"></td>
+                  <td class="p-4"><input type="text" name="vm_ip" value="{{ config.vm_ip }}" class="border p-1 rounded w-36"></td>
+                  <td class="p-4"><input type="text" name="student_emails" value="{{ config.student_emails }}" class="border p-1 rounded w-full"></td>
+                  <td class="p-4 flex justify-center gap-2">
+                    <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Save</button>
+                </form>
+                <form action="/delete/{{ config.id }}" method="POST" onsubmit="return confirm('Delete this configuration?');">
+                  <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Delete</button>
+                </form>
+                  </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="p-4 text-center text-gray-500">No configurations found. Add one above!</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mb-8">
+        <!-- Bouton Export Global -->
+        <form action="/export" method="POST" class="">
+          <button type="submit" class="p-4 md:col-span-4 bg-blue-600 text-white py-2 rounded font-medium hover:bg-blue-700 transition">
+            📁 Export Global Configuration
+          </button>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
