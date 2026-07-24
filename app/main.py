@@ -88,8 +88,15 @@ async def trigger_export():
 async def deploy_websocket(websocket: WebSocket):
     await websocket.accept()
 
-    # Pass the vars file using -e @path/to/vars.yml
-    cmd = [
+    galaxy_cmd = [
+        "ansible-galaxy", "collection", "install", 
+        "-r", str(BASE_DIR / "ansible" / "requirements.yml")
+    ]
+    
+    install_proc = await asyncio.create_subprocess_exec(*galaxy_cmd)
+    await install_proc.wait()
+
+    playbook_cmd = [
         "ansible-playbook",
         "ansible/deploy_vms.yml",
         "-e",
@@ -103,7 +110,7 @@ async def deploy_websocket(websocket: WebSocket):
 
     try:
         process = await asyncio.create_subprocess_exec(
-            *cmd,
+            *playbook_cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             env=env

@@ -7,10 +7,6 @@
     - ../storage/exports/vars.yml
 
   tasks:
-    - name: Install Ansible collections from requirements.yml
-      ansible.builtin.command:
-        cmd: ansible-galaxy collection install -r /opt/vmparty/ansible/requirements.yml
-
     - name: Create VMs
       community.general.proxmox_lxc:
         api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
