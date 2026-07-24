@@ -89,12 +89,9 @@ async def deploy_websocket(websocket: WebSocket):
     await websocket.accept()
 
     galaxy_cmd = [
-        "ansible-galaxy", "collection", "install", 
+        "/root/.share/ansible-galaxy", "collection", "install", 
         "-r", "ansible/requirements.yml"
     ]
-    
-    install_proc = await asyncio.create_subprocess_exec(*galaxy_cmd)
-    await install_proc.wait()
 
     playbook_cmd = [
         "ansible-playbook",
@@ -103,12 +100,19 @@ async def deploy_websocket(websocket: WebSocket):
         "@storage/exports/vars.yml"
     ]
 
-    # Force ANSI colors / unbuffered output for Ansible log streaming
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
     env["ANSIBLE_FORCE_COLOR"] = "1"
 
     try:
+        install_proc = await asyncio.create_subprocess_exec(
+            *galaxy_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT
+        )
+
+        await install_proc.wait()
+        
         process = await asyncio.create_subprocess_exec(
             *playbook_cmd,
             stdout=asyncio.subprocess.PIPE,
