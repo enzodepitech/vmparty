@@ -1,5 +1,5 @@
 ---
-- name: Provisionner les VMs/LXCs sur Proxmox
+- name: Deploy VMs to Proxmox
   hosts: localhost
   connection: local
   vars_files:
@@ -8,10 +8,10 @@
   tasks:
     - name: Create VMs
       community.general.proxmox_lxc:
-        api_host: "{{ proxmox_api_host }}"
-        api_user: "{{ proxmox_api_user }}"
-        api_token_id: "api_token"
-        api_token_secret: "{{ proxmox_api_token_secret }}"
+        api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
+        api_user: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
         vmid: "{{ item.vmid }}"
         hostname: "{{ item.name }}"
         node: "pve"

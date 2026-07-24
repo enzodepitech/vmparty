@@ -92,7 +92,8 @@ async def deploy_websocket(websocket: WebSocket):
     cmd = [
         "ansible-playbook",
         "ansible/",
-        "-e", "storage/exports/vars.yml"
+        "-e",
+        "@storage/exports/vars.yml"
     ]
 
     # Force ANSI colors / unbuffered output for Ansible log streaming
@@ -105,7 +106,6 @@ async def deploy_websocket(websocket: WebSocket):
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
-            cwd="/",
             env=env
         )
 
