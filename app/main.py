@@ -1,8 +1,13 @@
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+
 import sqlite3
+import logging
+import asyncio
+import os
+
 from app.database import init_db, get_db_connection
 from app.services.exporter import export_ansible_config
 
@@ -76,5 +81,53 @@ async def delete_config(config_id: int):
 @app.post("/export")
 async def trigger_export():
     nb_vm = export_ansible_config()
-    print(f"Successful export: {nb_vm} VMs created.")
+    logging.info(f"Successful export: {nb_vm} VMs created.")
     return RedirectResponse(url="/", status_code=303)
+
+@app.websocket("/ws/deploy")
+async def deploy_websocket(websocket: WebSocket):
+    await websocket.accept()
+
+    # Pass the vars file using -e @path/to/vars.yml
+    cmd = [
+        "ansible-playbook",
+        "ansible/",
+        "-e", "storage/exports/vars.yml"
+    ]
+
+    # Force ANSI colors / unbuffered output for Ansible log streaming
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    env["ANSIBLE_FORCE_COLOR"] = "1"
+
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            cwd="/",
+            env=env
+        )
+
+        await websocket.send_text("--- Starting Ansible Deployment ---")
+
+        # Stream logs line-by-line in real time
+        while True:
+            line = await process.stdout.readline()
+            if not line:
+                break
+            await websocket.send_text(line.decode().rstrip())
+
+        await process.wait()
+
+        if process.returncode == 0:
+            await websocket.send_text("--- Deployment Finished Successfully ---")
+        else:
+            await websocket.send_text(f"--- Deployment Failed (Exit Code {process.returncode}) ---")
+
+    except WebSocketDisconnect:
+        print("Client disconnected during deployment execution.")
+    except Exception as e:
+        await websocket.send_text(f"Error executing playbook: {str(e)}")
+    finally:
+        await websocket.close()

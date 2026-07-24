@@ -68,5 +68,114 @@
         </form>
       </div>
     </div>
+
+    <!-- Ansible Execution & Live Log Container -->
+<div class="max-w-4xl mx-auto my-6 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl overflow-hidden font-mono text-sm">
+  
+  <!-- Header Bar -->
+  <div class="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800 text-slate-400">
+    <div class="flex items-center space-x-2">
+      <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+      <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+      <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+      <span class="ml-2 font-semibold text-slate-300">Ansible Deployment Console</span>
+    </div>
+    <div class="flex items-center space-x-2 text-xs">
+      <span id="status-badge" class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">Idle</span>
+    </div>
+  </div>
+
+  <!-- Terminal Output Area -->
+  <div id="terminal-logs" class="h-96 p-4 overflow-y-auto bg-slate-950/50 text-slate-200 font-mono text-xs leading-relaxed whitespace-pre-wrap select-text">
+    <span class="text-slate-500">// Logs will stream here live when deployment is triggered...</span>
+  </div>
+
+  <!-- Footer Actions -->
+  <div class="flex items-center justify-between px-4 py-3 bg-slate-900 border-t border-slate-800">
+    <button 
+      id="deploy-btn"
+      onclick="startDeployment()"
+      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs rounded-lg shadow-sm transition-all flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+    >
+      <span>Deploy Student VMs</span>
+    </button>
+    <button 
+      onclick="clearLogs()" 
+      class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs rounded-md transition-colors cursor-pointer"
+    >
+      Clear Console
+    </button>
+  </div>
+</div>
+
+<!-- WebSocket Controller Script -->
+<script>
+    let socket = null;
+
+    function startDeployment() {
+        const terminal = document.getElementById("terminal-logs");
+        const deployBtn = document.getElementById("deploy-btn");
+        const statusBadge = document.getElementById("status-badge");
+
+        // Clear previous logs
+        terminal.innerHTML = "";
+
+        // Update UI state
+        deployBtn.disabled = true;
+        statusBadge.textContent = "Deploying...";
+        statusBadge.className = "px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium";
+
+        // Establish WebSocket Connection
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/deploy`;
+
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+            appendLogLine("[System] Connection established to deployment engine...", "text-indigo-400");
+        };
+
+        socket.onmessage = (event) => {
+            const line = event.data;
+
+            // Basic ANSI/Ansible text color highlight parsing
+            let colorClass = "text-slate-300";
+            if (line.includes("PLAY [") || line.includes("TASK [")) colorClass = "text-cyan-400 font-bold";
+            else if (line.includes("ok:")) colorClass = "text-emerald-400";
+            else if (line.includes("changed:")) colorClass = "text-amber-300";
+            else if (line.includes("FAILED!") || line.includes("fatal:")) colorClass = "text-rose-400 font-semibold";
+            else if (line.includes("--- Starting") || line.includes("--- Deployment")) colorClass = "text-indigo-400 font-semibold";
+
+            appendLogLine(line, colorClass);
+        };
+
+        socket.onerror = (error) => {
+            appendLogLine("[Error] WebSocket error occurred.", "text-rose-400 font-semibold");
+        };
+
+        socket.onclose = () => {
+            deployBtn.disabled = false;
+            statusBadge.textContent = "Finished";
+            statusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
+            appendLogLine("[System] Connection closed.", "text-slate-500");
+        };
+    }
+
+    function appendLogLine(text, colorClass = "text-slate-300") {
+        const terminal = document.getElementById("terminal-logs");
+        const lineElement = document.createElement("div");
+        lineElement.className = colorClass;
+        lineElement.textContent = text;
+        terminal.appendChild(lineElement);
+
+        // Auto-scroll to bottom
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function clearLogs() {
+        const terminal = document.getElementById("terminal-logs");
+        terminal.innerHTML = '<span class="text-slate-500">// Logs cleared. Ready to deploy...</span>';
+    }
+</script>
   </body>
 </html>
