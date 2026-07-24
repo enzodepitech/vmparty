@@ -91,7 +91,7 @@ async def deploy_websocket(websocket: WebSocket):
     # Pass the vars file using -e @path/to/vars.yml
     cmd = [
         "ansible-playbook",
-        "ansible/",
+        "ansible/deploy_vms.yml",
         "-e",
         "@storage/exports/vars.yml"
     ]
