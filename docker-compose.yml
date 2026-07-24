@@ -2,6 +2,8 @@ services:
   manager-api:
     build: .
     container_name: vm-manager-api
+    env_file:
+      - /etc/environment
     ports:
       - "8000:8000"
     volumes:
