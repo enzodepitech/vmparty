@@ -22,7 +22,7 @@
         onboot: true
       loop: "{{ vms }}"
 
-      - name: Start VMs
+    - name: Start VMs
       community.proxmox.proxmox:
         vmid: "{{ item.vmid }}"
         state: started
