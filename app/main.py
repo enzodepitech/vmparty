@@ -88,11 +88,6 @@ async def trigger_export():
 async def deploy_websocket(websocket: WebSocket):
     await websocket.accept()
 
-    galaxy_cmd = [
-        "/root/.share/ansible-galaxy", "collection", "install", 
-        "-r", "ansible/requirements.yml"
-    ]
-
     playbook_cmd = [
         "ansible-playbook",
         "ansible/deploy_vms.yml",
@@ -105,14 +100,6 @@ async def deploy_websocket(websocket: WebSocket):
     env["ANSIBLE_FORCE_COLOR"] = "1"
 
     try:
-        install_proc = await asyncio.create_subprocess_exec(
-            *galaxy_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT
-        )
-
-        await install_proc.wait()
-        
         process = await asyncio.create_subprocess_exec(
             *playbook_cmd,
             stdout=asyncio.subprocess.PIPE,
