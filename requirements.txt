@@ -3,3 +3,7 @@ uvicorn
 jinja2
 python-multipart
 PyYAML
+websockets
+ansible-core
+proxmoxer
+requests
