@@ -97,7 +97,8 @@ async def deploy_websocket(websocket: WebSocket):
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
-    env["ANSIBLE_FORCE_COLOR"] = "1"
+
+    print(env)
 
     try:
         process = await asyncio.create_subprocess_exec(
