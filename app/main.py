@@ -90,7 +90,7 @@ async def deploy_websocket(websocket: WebSocket):
 
     galaxy_cmd = [
         "ansible-galaxy", "collection", "install", 
-        "-r", str(BASE_DIR / "ansible" / "requirements.yml")
+        "-r", "ansible/requirements.yml"
     ]
     
     install_proc = await asyncio.create_subprocess_exec(*galaxy_cmd)
