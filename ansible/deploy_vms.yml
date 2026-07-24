@@ -18,7 +18,7 @@
         node: "pve"
         ostemplate: "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"
         netif:
-          net0: "name=eth0,gw=192.168.0.1,ip={{ item.ip }}/24,bridge=vmbr0"
+          net0: "name=eth0,gw=192.168.10.1,ip={{ item.ip }}/24,bridge=vmbr0"
         state: present
         onboot: true
       loop: "{{ vms }}"
