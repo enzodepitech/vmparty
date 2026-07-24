@@ -98,7 +98,7 @@ async def deploy_websocket(websocket: WebSocket):
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
 
-    print(env)
+    logging.info(env)
 
     try:
         process = await asyncio.create_subprocess_exec(
@@ -125,7 +125,7 @@ async def deploy_websocket(websocket: WebSocket):
             await websocket.send_text(f"--- Deployment Failed (Exit Code {process.returncode}) ---")
 
     except WebSocketDisconnect:
-        print("Client disconnected during deployment execution.")
+        logging.info("Client disconnected during deployment execution.")
     except Exception as e:
         await websocket.send_text(f"Error executing playbook: {str(e)}")
     finally:
