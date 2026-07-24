@@ -127,7 +127,7 @@
 
         // Establish WebSocket Connection
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/deploy`;
+        const wsUrl = `${protocol}//${window.location.host}/ws/deploy`;
 
         socket = new WebSocket(wsUrl);
 
