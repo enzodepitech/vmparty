@@ -17,9 +17,12 @@
         hostname: "{{ item.name }}"
         node: "pve"
         validate_certs: false
-        ostemplate: "local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
+        disk_volume:
+          storage: "local-lvm"
+          size: 8
         netif:
           net0: "name=eth0,gw=192.168.10.1,ip={{ item.ip }}/24,bridge=vmbr0"
+        ostemplate: "local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
         state: present
         onboot: true
       loop: "{{ vms }}"
