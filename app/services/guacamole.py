@@ -25,7 +25,6 @@ def _sync_register_guacamole_access(vars_file_path: str):
         hostname=GUACAMOLE_URL,
         username=GUAC_ADMIN_USER,
         password=GUAC_ADMIN_PASS,
-        datasource=DATABASE_SOURCE,
     )
 
     # Process each deployed VM/LXC container
