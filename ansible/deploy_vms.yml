@@ -35,6 +35,7 @@
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
         vmid: "{{ item.vmid }}"
+        validate_certs: false
         state: started
         timeout: 90
       loop: "{{ vms }}"
