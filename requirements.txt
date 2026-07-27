@@ -7,3 +7,4 @@ websockets
 ansible-core>=2.13.9
 proxmoxer
 requests
+pip-system-certs
