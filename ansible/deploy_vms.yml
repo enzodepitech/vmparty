@@ -29,6 +29,11 @@
 
     - name: Start VMs
       community.proxmox.proxmox:
+        api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
+        api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
         vmid: "{{ item.vmid }}"
         state: started
+        timeout: 90
       loop: "{{ vms }}"
