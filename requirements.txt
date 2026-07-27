@@ -9,3 +9,6 @@ proxmoxer
 requests
 pip-system-certs
 guacapy
+argon2-cffi
+itsdangerous
+python-multipart

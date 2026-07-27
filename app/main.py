@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocketDisconnect
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocketDisconnect, Depends, status
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 import sqlite3
 import logging
@@ -10,16 +11,20 @@ import os
 from app.services.guacamole import register_guacamole_access
 from app.database import init_db, get_db_connection
 from app.services.exporter import export_ansible_config
+from app.auth import ADMIN_USERNAME, ADMIN_PASSWORD_HASH, verify_password, create_session_token, require_admin, require_admin_ws
+
+# --- Init app
 
 app = FastAPI(title="VM Party")
 
 init_db()
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 # --- UI ROUTE ---
 @app.get("/")
-async def read_dashboard(request: Request):
+async def read_dashboard(request: Request, admin_user: str = Depends(require_admin)):
     conn = get_db_connection()
     configs = conn.execute("SELECT * FROM configs ORDER BY id DESC").fetchall()
     conn.close()
@@ -36,7 +41,8 @@ async def add_config(
     team_name: str = Form(...),
     vm_id: int = Form(...),
     vm_ip: str = Form(...),
-    student_emails: str = Form(...)
+    student_emails: str = Form(...),
+    admin_user: str = Depends(require_admin)
 ):
     try:
         conn = get_db_connection()
@@ -57,7 +63,8 @@ async def edit_config(
     team_name: str = Form(...),
     vm_id: int = Form(...),
     vm_ip: str = Form(...),
-    student_emails: str = Form(...)
+    student_emails: str = Form(...),
+    admin_user: str = Depends(require_admin)
 ):
     conn = get_db_connection()
     conn.execute(
@@ -71,23 +78,34 @@ async def edit_config(
     return RedirectResponse(url="/", status_code=303)
 
 @app.post("/delete/{config_id}")
-async def delete_config(config_id: int):
+async def delete_config(config_id: int, admin_user: str = Depends(require_admin)):
     conn = get_db_connection()
     conn.execute("DELETE FROM configs WHERE id = ?", (config_id,))
     conn.commit()
     conn.close()
     return RedirectResponse(url="/", status_code=303)
 
-@app.post("/export")
-async def trigger_export():
-    nb_vm = export_ansible_config()
-    logging.info(f"Successful export: {nb_vm} VMs created.")
-    return RedirectResponse(url="/", status_code=303)
-
 @app.websocket("/ws/deploy")
-async def deploy_websocket(websocket: WebSocket):
+async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(require_admin_ws)):
+    """
+    Export configuration -> Deploy Vms -> Create users (Guacamole).
+    """
     await websocket.accept()
 
+    await websocket.send_text("--- Starting Configuration Export ---")
+
+    # Export Configuration
+    try :
+        nb_vm = export_ansible_config()
+    except Exception as e:
+        logging.error(f"Error when exporting configuration file: {e}")
+        await websocket.send_text(f"--- Error when exportings VM(s): {e} ---")
+        return
+
+    logging.info(f"Successful export: {nb_vm} VMs created.")
+    await websocket.send_text(f"--- Successful exported {nb_vm} VM(s). ---")
+
+    # Deploy VMs via Ansible
     playbook_cmd = [
         "ansible-playbook",
         "ansible/deploy_vms.yml",
@@ -121,8 +139,8 @@ async def deploy_websocket(websocket: WebSocket):
             await websocket.send_text("--- Ansible Deployment Finished Successfully ---")
             await websocket.send_text("--- Starting Registering Guacamole connections... ---")
 
+            # Users registration (via guacamole rest api)
             try:
-                # Trigger Guacamole registration
                 await register_guacamole_access("storage/exports/vars.yml")
                 await websocket.send_text("--- Guacamole access successfully configured for all students! ---")
             except Exception as e:
@@ -137,3 +155,49 @@ async def deploy_websocket(websocket: WebSocket):
         await websocket.send_text(f"Error executing playbook: {str(e)}")
     finally:
         await websocket.close()
+
+
+# ----------------------------------------------------
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+    )
+
+@app.post("/login")
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    # Verify username & Argon2 password hash
+    if username == ADMIN_USERNAME and verify_password(password, ADMIN_PASSWORD_HASH):
+        token = create_session_token(username)
+        response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+        
+        # Set HTTP-Only, Secure Cookie
+        response.set_cookie(
+            key="admin_session",
+            value=token,
+            httponly=True,  # Prevents JavaScript XSS access
+            secure=True,    # Set to True in production (requires HTTPS)
+            samesite="lax", # Mitigates CSRF attacks
+            max_age=86400   # 24 hours
+        )
+        return response
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"error": "Invalid username or password"},
+        status_code=status.HTTP_401_UNAUTHORIZED
+    )
+
+@app.get("/logout")
+async def logout():
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie("admin_session")
+    return response
