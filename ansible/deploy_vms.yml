@@ -25,6 +25,7 @@
         ostemplate: "local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
         state: present
         onboot: true
+        cmode: 'tty'
       loop: "{{ vms }}"
 
     - name: Start VMs
