@@ -5,8 +5,8 @@ import logging
 from guacapy import Guacamole
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
-GUAC_ADMIN_USER = os.getenv("GUACAMOLE_ADMIN_USER", "")
-GUAC_ADMIN_PASS = os.getenv("GUACAMOLE_ADMIN_PASSWORD", "")
+GUAC_ADMIN_USER = os.getenv("GUACAMOLE_API_USER", "")
+GUAC_ADMIN_PASS = os.getenv("GUACAMOLE_API_PASSWORD", "")
 DATABASE_SOURCE = "postgresql"
 
 def _sync_register_guacamole_access(vars_file_path: str):
@@ -22,7 +22,7 @@ def _sync_register_guacamole_access(vars_file_path: str):
 
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
-        url=GUACAMOLE_URL,
+        hostname=GUACAMOLE_URL,
         username=GUAC_ADMIN_USER,
         password=GUAC_ADMIN_PASS,
         datasource=DATABASE_SOURCE,
