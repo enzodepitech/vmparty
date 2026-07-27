@@ -1,13 +1,13 @@
 from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 
 import sqlite3
 import logging
 import asyncio
 import os
 
+from app.services.guacamole import register_guacamole_access
 from app.database import init_db, get_db_connection
 from app.services.exporter import export_ansible_config
 
@@ -98,8 +98,6 @@ async def deploy_websocket(websocket: WebSocket):
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
 
-    logging.info(env)
-
     try:
         process = await asyncio.create_subprocess_exec(
             *playbook_cmd,
@@ -120,7 +118,16 @@ async def deploy_websocket(websocket: WebSocket):
         await process.wait()
 
         if process.returncode == 0:
-            await websocket.send_text("--- Deployment Finished Successfully ---")
+            await websocket.send_text("--- Ansible Deployment Finished Successfully ---")
+            await websocket.send_text("--- Starting Registering Guacamole connections... ---")
+
+            try:
+                # Trigger Guacamole registration
+                await register_guacamole_access("storage/exports/vars.yml")
+                await websocket.send_text("--- Guacamole access successfully configured for all students! ---")
+            except Exception as e:
+                await websocket.send_text(f"--- Error configuring Guacamole access: {str(e)}")
+                
         else:
             await websocket.send_text(f"--- Deployment Failed (Exit Code {process.returncode}) ---")
 
