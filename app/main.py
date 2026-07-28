@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocket
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 import sqlite3
 import logging
@@ -19,7 +20,13 @@ app = FastAPI(title="VM Party")
 
 init_db()
 
+# Allow https traffic over proxy
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
+
+# Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Template file directory
 templates = Jinja2Templates(directory="app/templates")
 
 # --- UI ROUTE ---
