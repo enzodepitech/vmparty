@@ -3,7 +3,8 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-from fastapi import WebSocket, WebSocketException, Request, HTTPException, status
+from fastapi import WebSocket, WebSocketException, Request, status
+from fastapi.responses import RedirectResponse
 
 SECRET_KEY = os.getenv("SECRET_KEY", "12345678") # Salt
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
@@ -49,16 +50,16 @@ async def require_admin(request: Request):
     session_token = request.cookies.get("admin_session")
     
     if not session_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized access",
-            headers={"Location": "/login"}
+        return RedirectResponse(
+            url="/login", 
+            status_code=status.HTTP_303_SEE_OTHER
         )
         
     username = verify_session_token(session_token)
     if not username or username != ADMIN_USERNAME:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session invalid or expired"
+        return RedirectResponse(
+            url="/login", 
+            status_code=status.HTTP_303_SEE_OTHER
         )
+    
     return username
