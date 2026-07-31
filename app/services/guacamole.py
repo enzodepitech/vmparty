@@ -64,7 +64,7 @@ def _sync_register_guacamole_access(vars_file_path: str):
             # Assign connection permission to the user
             guac.users.assign_connection(
                 username=student_mail,
-                permission_type="READ",
+                permission="READ",
                 connection_id=conn_id,
             )
             logging.info(f"Granted student '{student}' access to '{vm_name}'")
