@@ -9,8 +9,6 @@ from app.auth import require_admin_ws
 async def provide_student_credentials(websocket: WebSocket, admin_user: str = Depends(require_admin_ws)):
     """
     """
-    await websocket.accept()
-
     await websocket.send_text("--- Starting Credentials Provisionning ---")
 
     # Deploy VMs via Ansible
