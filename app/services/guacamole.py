@@ -2,7 +2,8 @@ import asyncio
 import os
 import yaml
 import logging
-from guacapy import Guacamole, ConnectionManager
+from guacapy import Guacamole
+from guacapy.managers import ConnectionManager
 from copy import deepcopy
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
