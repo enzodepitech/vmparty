@@ -1,3 +1,4 @@
+
 ---
 - name: Deploy VMs to Proxmox
   hosts: localhost
@@ -17,6 +18,10 @@
         hostname: "{{ item.name }}"
         node: "pve"
         validate_certs: false
+        cpus: 2
+        memory: 2048
+        swap: 512
+        unprivileged: true
         disk_volume:
           storage: "local-lvm"
           size: 8

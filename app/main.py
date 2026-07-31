@@ -1,3 +1,4 @@
+from app.services.provisionner import provide_student_credentials
 from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocketDisconnect, Depends, status
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -152,6 +153,14 @@ async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(requi
                 await websocket.send_text("--- Guacamole access successfully configured for all students! ---")
             except Exception as e:
                 await websocket.send_text(f"--- Error configuring Guacamole access: {str(e)}")
+
+            # Provide credentials via Ansible
+            try:
+                await provide_student_credentials(websocket)
+                await websocket.send_text("--- Credentials successfully configured for all students! ---")
+            except Exception as e:
+                await websocket.send_text(f"--- Error configuring credentials access: {str(e)}")
+                pass
                 
         else:
             await websocket.send_text(f"--- Deployment Failed (Exit Code {process.returncode}) ---")

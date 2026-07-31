@@ -11,13 +11,12 @@ def export_ansible_config():
     vms_list = []
     for conf in configs:
         emails = conf["student_emails"].split(",")
-        usernames = [e.strip().split("@")[0] for e in emails if e.strip()]
         
         vms_list.append({
             "vmid": conf["vm_id"],
             "name": conf["team_name"].lower().strip().replace(" ", "-"),
             "ip": conf["vm_ip"],
-            "students": usernames
+            "students": emails
         })
 
     # Écriture du fichier de variables pour Ansible
