@@ -46,9 +46,15 @@ def _sync_register_guacamole_access(vars_file_path: str):
         })
 
         # Create SSH Connection
-        connection = guac.connections.create(connection_payload)
-        conn_id = connection["identifier"]
-        logging.info(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
+        try :
+            connection = guac.connections.create(connection_payload)
+            conn_id = connection["identifier"]
+            logging.info(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
+        except Exception as _:
+            # Connection already existing, updating connection
+            connection = guac.connections.get_by_name(vm_name)
+            conn_id = connection["identifier"]
+            logging.info(f"Guacamole SSH Connection already exists: '{vm_name}' (ID: {conn_id})")
 
         # Assign access to students
         for student in students:
