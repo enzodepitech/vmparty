@@ -20,7 +20,7 @@ def export_ansible_config():
         })
 
     # Écriture du fichier de variables pour Ansible
-    with open("storage/exports/vars.yml", "w") as f:
+    with open("storage/exports/vms_conf.yml", "w") as f:
         yaml.dump({"vms": vms_list}, f)
 
     return len(vms_list)

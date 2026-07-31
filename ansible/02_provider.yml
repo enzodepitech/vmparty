@@ -1,0 +1,74 @@
+---
+- name: Configure Student LXC Environment
+  hosts: student_containers
+  gather_facts: false
+  vars_files:
+    - ../storage/exports/credentials.yml
+
+  tasks:
+    # -------------------------------------------------------------
+    # 1. INSTALL BASE PACKAGES & DEVELOPMENT TOOLS
+    # -------------------------------------------------------------
+    - name: Update apt cache and install base student tooling
+    ansible.builtin.apt:
+        update_cache: true
+        name:
+          - sudo
+          - ca-certificates
+          - curl
+          - git
+          - nano
+          - wget
+          - tree
+          - htop
+        state: present
+
+    # -------------------------------------------------------------
+    # 2. CONFIGURE GROUP WORKSPACE & PERMISSIONS
+    # -------------------------------------------------------------
+    - name: Ensure common group exists for group work
+      ansible.builtin.group:
+        name: groupwork
+        state: present
+
+    - name: Create shared /workspace directory with SETGID
+      ansible.builtin.file:
+        path: /workspace
+        state: directory
+        owner: root
+        group: groupwork
+        mode: '2775' # SETGID bit (2) forces all new files to inherit group ownership
+
+    # -------------------------------------------------------------
+    # 3. CREATE STUDENT ACCOUNTS & GRANT SUDO ACCESS
+    # -------------------------------------------------------------
+    - name: Create student user accounts and add to sudo + groupwork
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        password: "{{ item.password_hash }}"
+        groups: 
+          - groupwork
+          - sudo
+        append: true
+        shell: /bin/bash
+        create_home: true
+        state: present
+      loop: "{{ student_credentials }}"
+      when: item.vmid == hostvars[inventory_hostname].vmid
+
+    - name: Allow passwordless sudo for student accounts (Optional but recommended)
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/students
+        line: "%sudo ALL=(ALL:ALL) NOPASSWD: ALL"
+        create: true
+        mode: '0440'
+
+    # -------------------------------------------------------------
+    # 4. ENVIRONMENT & PERMISSION HARDENING
+    # -------------------------------------------------------------
+    - name: Restrict individual home directories to owner only
+      ansible.builtin.file:
+        path: "/home/{{ item.username }}"
+        mode: '0700'
+      loop: "{{ student_credentials }}"
+      when: item.vmid == hostvars[inventory_hostname].vmid

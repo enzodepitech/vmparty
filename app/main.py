@@ -17,6 +17,9 @@ from app.auth import ADMIN_USERNAME, ADMIN_PASSWORD_HASH, verify_password, creat
 
 # --- Init app
 
+VMS_CONF_FILE = "./vms_conf.yml"
+EXPORT_PATH = "@storage/exports/"
+
 app = FastAPI(title="VM Party")
 
 init_db()
@@ -116,9 +119,9 @@ async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(requi
     # Deploy VMs via Ansible
     playbook_cmd = [
         "ansible-playbook",
-        "ansible/deploy_vms.yml",
+        "ansible/01_deploy.yml",
         "-e",
-        "@storage/exports/vars.yml"
+        "@storage/exports/vms_conf.yml"
     ]
 
     env = os.environ.copy()
@@ -149,7 +152,7 @@ async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(requi
 
             # Users registration (via guacamole rest api)
             try:
-                await register_guacamole_access("storage/exports/vars.yml")
+                await register_guacamole_access("/storage/exports/vms_conf.yml")
                 await websocket.send_text("--- Guacamole access successfully configured for all students! ---")
             except Exception as e:
                 await websocket.send_text(f"--- Error configuring Guacamole access: {str(e)}")
