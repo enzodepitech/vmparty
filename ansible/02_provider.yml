@@ -18,6 +18,7 @@
           - curl
           - git
           - nano
+          - openssh-server
           - wget
           - tree
           - htop
