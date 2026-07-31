@@ -2,7 +2,8 @@ import asyncio
 import os
 import yaml
 import logging
-from guacapy import Guacamole
+from guacapy import Guacamole, ConnectionManager
+from copy import deepcopy
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
 GUAC_ADMIN_USER = os.getenv("GUACAMOLE_API_USER", "")
@@ -35,31 +36,31 @@ def _sync_register_guacamole_access(vars_file_path: str):
         vm_ip = vm["ip"]
         students = vm.get("students", [])
 
-        # Create SSH Connection in Guacamole
-        connection = guac.connections.create(
-            name=vm_name,
-            protocol="ssh",
-            parameters={
-                "hostname": vm_ip,
-                "port": "22",
+        connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
+        connection_payload.update({
+            "name": vm_name,
+            "parameters": {
+                "hostname": vm_ip
             }
-        )
+        })
+
+        # Create SSH Connection
+        connection = guac.connections.create(connection_payload)
         conn_id = connection["identifier"]
         logging.info(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
 
-        # Assign access to every student mapped to this VM
+        # Assign access to students
         for student in students:
-            # Ensure student user exists in PostgreSQL (OIDC matches exact username)
+
             student_mail = student + "@epitech.eu"
             try:
-                guac.users.create({
-                    "username": student_mail
-                })
+                guac.users.create({"username": student_mail })
             except Exception:
-                # User already exists in database; proceed
+                # User already exists
+                logging.info(f"User {student_mail} already exists in guacamole database.")
                 pass
 
-            # Grant READ permission on the connection to the OIDC user
+            # Assign connection permission to the user
             guac.users.assign_connection(
                 username=student_mail,
                 permission_type="READ",
