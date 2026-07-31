@@ -27,6 +27,8 @@ def _sync_register_guacamole_access(vars_file_path: str):
         password=GUAC_ADMIN_PASS,
     )
 
+    logging.info("Successfully connected to guacamole.")
+
     # Process each deployed VM/LXC container
     for vm in vms:
         vm_name = vm["name"]
@@ -34,16 +36,13 @@ def _sync_register_guacamole_access(vars_file_path: str):
         students = vm.get("students", [])
 
         # Create SSH Connection in Guacamole
-        connection = guac.create_connection(
+        connection = guac.connections.create(
             name=vm_name,
             protocol="ssh",
             parameters={
                 "hostname": vm_ip,
                 "port": "22",
-                # Optional connection settings:
-                # "font-size": "14",
-                # "color-scheme": "green-black"
-            },
+            }
         )
         conn_id = connection["identifier"]
         logging.info(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
@@ -51,15 +50,18 @@ def _sync_register_guacamole_access(vars_file_path: str):
         # Assign access to every student mapped to this VM
         for student in students:
             # Ensure student user exists in PostgreSQL (OIDC matches exact username)
+            student_mail = student + "@epitech.eu"
             try:
-                guac.create_user(username=student)
+                guac.users.create({
+                    "username": student_mail
+                })
             except Exception:
                 # User already exists in database; proceed
                 pass
 
             # Grant READ permission on the connection to the OIDC user
-            guac.add_user_permission(
-                username=student,
+            guac.users.assign_connection(
+                username=student_mail,
                 permission_type="READ",
                 connection_id=conn_id,
             )
