@@ -50,5 +50,3 @@ async def provide_student_credentials(websocket: WebSocket, admin_user: str = De
         logging.info("Client disconnected during deployment execution.")
     except Exception as e:
         await websocket.send_text(f"Error executing playbook: {str(e)}")
-    finally:
-        await websocket.close()
