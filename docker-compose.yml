@@ -2,6 +2,8 @@ services:
   manager-api:
     build: .
     container_name: vm-manager-api
+    extra_hosts:
+      - "guacamole.lilepiserver.duckdns.org:192.168.10.101"
     env_file:
       - /etc/environment
     ports:
