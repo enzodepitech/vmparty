@@ -55,6 +55,7 @@ async def add_config(
     student_emails: str = Form(...),
     admin_user: str = Depends(require_admin)
 ):
+    conn = None
     try:
         conn = get_db_connection()
         conn.execute(
@@ -65,7 +66,8 @@ async def add_config(
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=400, detail="VM ID must be unique.")
     finally:
-        conn.close()
+        if conn:
+            conn.close()
     return RedirectResponse(url="/", status_code=303)
 
 @app.post("/edit/{config_id}")
@@ -139,10 +141,11 @@ async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(requi
 
         # Stream logs line-by-line in real time
         while True:
-            line = await process.stdout.readline()
-            if not line:
-                break
-            await websocket.send_text(line.decode().rstrip())
+            if process.stdout:
+                line = await process.stdout.readline()
+                if not line:
+                    break
+                await websocket.send_text(line.decode().rstrip())
 
         await process.wait()
 
@@ -193,7 +196,10 @@ async def login(
     password: str = Form(...)
 ):
     # Verify username & Argon2 password hash
-    if username == ADMIN_USERNAME and verify_password(password, ADMIN_PASSWORD_HASH):
+    if (ADMIN_PASSWORD_HASH is not None) and \
+       (username == ADMIN_USERNAME) and \
+       verify_password(password, ADMIN_PASSWORD_HASH):
+        
         token = create_session_token(username)
         response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
         

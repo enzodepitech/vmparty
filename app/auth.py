@@ -5,12 +5,9 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from fastapi import WebSocket, WebSocketException, Request, HTTPException, status
 
-SECRET_KEY = os.getenv("SECRET_KEY", "12345678") # Salt
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD_HASH = os.getenv(
-    "ADMIN_PASSWORD_HASH",
-    "$argon2i$v=19$m=16,t=2,p=1$MTIzNDU2Nzg$h0xEI8L2QVIT+3zu2qpkdw" 
-)
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
 
 ph = PasswordHasher()
 serializer = URLSafeTimedSerializer(SECRET_KEY, salt="admin-session")
