@@ -7,9 +7,9 @@ services:
     env_file:
       - /etc/environment
     environment:
-      - SECRET_KEY=${SECRET_KEY}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
-      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      - SECRET_KEY
+      - ADMIN_USERNAME
+      - ADMIN_PASSWORD_HASH
     ports:
       - "8000:8000"
     volumes:
