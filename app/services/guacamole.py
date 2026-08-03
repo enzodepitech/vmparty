@@ -61,10 +61,23 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
             await websocket.send_text(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
             
             try:
-                user_payload = deepcopy(UserManager.CREATE_USER_TEMPLATE)
-                user_payload.update({
-                    "username": student
-                })
+                user_payload = {
+                    "username": student,
+                    "password": "",
+                    "attributes": {
+                        "disabled": "",
+                        "expired": "",
+                        "access-window-start": "",
+                        "access-window-end": "",
+                        "valid-from": "",
+                        "valid-until": "",
+                        "timezone": None,
+                        "guac-full-name": "",
+                        "guac-organization": "",
+                        "guac-organizational-role": "",
+                        "guac-email-address": "",
+                    },
+                }
                 guac.users.create(user_payload)
             except Exception as e:
                 # User already exists
