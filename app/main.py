@@ -18,7 +18,7 @@ from app.auth import ADMIN_USERNAME, ADMIN_PASSWORD_HASH, verify_password, creat
 # --- Init app
 
 VMS_CONF_FILE = "./vms_conf.yml"
-EXPORT_PATH = "/storage/exports/"
+EXPORT_PATH = "@storage/exports/"
 
 app = FastAPI(title="VM Party")
 

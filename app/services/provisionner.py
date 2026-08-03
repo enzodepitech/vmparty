@@ -15,7 +15,7 @@ async def provide_student_credentials(websocket: WebSocket, admin_user: str = De
     playbook_cmd = [
         "ansible-playbook",
         "ansible/02_provider.yml",
-        "-i", "@storage/exports/inventory.ini",
+        "-i", "../storage/exports/inventory.ini",
         "--private-key", "/app/keys/id_ed25519",
         "-e",
         "@storage/exports/credentials.yml"
