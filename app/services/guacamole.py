@@ -78,6 +78,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                         "guac-email-address": "",
                     },
                 }
+                await websocket.send_text(f"Student payload: {user_payload}")
                 guac.users.create(user_payload)
             except Exception as e:
                 # User already exists
