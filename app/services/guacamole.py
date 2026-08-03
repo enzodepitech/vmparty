@@ -5,7 +5,7 @@ import secrets
 from fastapi import WebSocket
 
 from guacapy import Guacamole
-from guacapy.managers import ConnectionManager
+from guacapy.managers import ConnectionManager, UserManager
 
 from copy import deepcopy
 
@@ -29,7 +29,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
     guac = Guacamole(
         hostname=GUACAMOLE_URL,
         username=GUAC_ADMIN_USER,
-        password=GUAC_ADMIN_PASS,
+        password=GUAC_ADMIN_PASS
     )
 
     await websocket.send_text("Successfully connected to guacamole.")
@@ -61,7 +61,11 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
             await websocket.send_text(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
             
             try:
-                guac.users.create({"username": "testcreation"})
+                user_payload = deepcopy(UserManager.CREATE_USER_TEMPLATE)
+                user_payload.update({
+                    "username": student
+                })
+                guac.users.create(user_payload)
             except Exception as e:
                 # User already exists
                 await websocket.send_text(f"Error when creating {student} user: {str(e)}")
