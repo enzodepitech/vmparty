@@ -1,6 +1,7 @@
 import os
 import yaml
 import secrets
+import logging
 
 from fastapi import WebSocket
 
@@ -46,7 +47,13 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
         for student in students:
             password = secrets.token_urlsafe(12)
             student_mail = student
-            student_username = student_mail.split('@')[0].replace('.', '_')
+            student_username = student_mail
+            try:
+                student_username = student_mail.split('@')[0].replace('.', '_')
+            except Exception as e:
+                logging.error(f"Error when sanitizing student mail: {str(e)}");
+                await websocket.send_text(f"Error when sanitizing student mail: {str(e)}")
+                
 
             connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
             connection_payload.update({
@@ -58,10 +65,16 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                 }
             })
 
-            connection = guac.connections.create(connection_payload)
-            conn_id = connection["identifier"]
-            await websocket.send_text(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
-            
+            conn_id = None
+            try:
+                connection = guac.connections.create(connection_payload)
+                conn_id = connection["identifier"]
+                await websocket.send_text(f"Successfully created connection: '{vm_name}' (ID: {conn_id})")
+                logging.info(f"Successfully created connection: '{vm_name}' (ID: {conn_id})");
+            except Exception as e:
+                await websocket.send_text(f"Error when creating connection: {str(e)}")
+                logging.error(f"Error when creating connection: {str(e)}");
+                
             try:
                 user_payload = {
                     "username": student_mail,
@@ -88,12 +101,15 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                 pass
 
             # Assign connection permission to the user
-            guac.users.assign_connection(
-                username=student_username,
-                permission="READ",
-                connection_id=conn_id,
-            )
-            await websocket.send_text(f"Granted student '{student_mail}:{student_username}' access to '{vm_name}'")
+            try:
+                guac.users.assign_connection(
+                    username=student_mail,
+                    permission="READ",
+                    connection_id=conn_id,
+                )
+                await websocket.send_text(f"Successfully granted student '{student_mail}:{student_username}' access to '{vm_name}'")
+            except Exception as e:
+                await websocket.send_text(f"Error when assigning connection for '{student_mail}:{student_username}': {str(e)}")
 
             credentials_list.append({
                 "vmid": vm["vmid"],
