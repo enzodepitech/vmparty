@@ -78,7 +78,13 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                 if status_code == 400:
                     await websocket.send_text(f"Connection alreay existing, trying to fetch it...")
                     connection = guac.connections.get_by_name()
+
+                    # Retrieve information
                     conn_id = connection["identifier"]
+                    password = connection["parameters"]["password"]
+                    student_username = student_username
+                    vm_ip = vm_ip
+                    
                     await websocket.send_text(f"Successfully retrieved connection.")
                 else:
                     await websocket.send_text(f"Error when creating connection: {str(e)}")
