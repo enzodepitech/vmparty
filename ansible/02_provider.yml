@@ -10,7 +10,7 @@
     # 1. INSTALL BASE PACKAGES & DEVELOPMENT TOOLS
     # -------------------------------------------------------------
     - name: Update apt cache and install base student tooling
-    ansible.builtin.apt:
+      ansible.builtin.apt:
         update_cache: true
         name:
           - sudo
