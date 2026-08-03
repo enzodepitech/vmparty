@@ -94,7 +94,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
             await websocket.send_text(f"Granted student '{student}' access to '{vm_name}'")
 
             credentials_list.append({
-                "vmid": vm_ip,
+                "vmid": vm["vmid"],
                 "username": student,
                 "password": password
             })
