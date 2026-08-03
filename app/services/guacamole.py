@@ -61,7 +61,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
             await websocket.send_text(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
             
             try:
-                guac.users.create({"username": student})
+                guac.users.create({"username": "testcreation"})
             except Exception as e:
                 # User already exists
                 await websocket.send_text(f"Error when creating {student} user: {str(e)}")
