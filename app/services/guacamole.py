@@ -45,13 +45,15 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
         # Assign access to students
         for student in students:
             password = secrets.token_urlsafe(12)
+            student_mail = student
+            student_username = student_mail.split('@')[0].replace('.', '_')
 
             connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
             connection_payload.update({
                 "name": vm_name,
                 "parameters": {
                     "hostname": vm_ip,
-                    "username": student,
+                    "username": student_username,
                     "password": password
                 }
             })
@@ -62,7 +64,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
             
             try:
                 user_payload = {
-                    "username": student,
+                    "username": student_mail,
                     "password": "",
                     "attributes": {
                         "disabled": "",
@@ -82,20 +84,20 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                 guac.users.create(user_payload)
             except Exception as e:
                 # User already exists
-                await websocket.send_text(f"Error when creating {student} user: {str(e)}")
+                await websocket.send_text(f"Error when creating {student_mail} user: {str(e)}")
                 pass
 
             # Assign connection permission to the user
             guac.users.assign_connection(
-                username=student,
+                username=student_username,
                 permission="READ",
                 connection_id=conn_id,
             )
-            await websocket.send_text(f"Granted student '{student}' access to '{vm_name}'")
+            await websocket.send_text(f"Granted student '{student_mail}:{student_username}' access to '{vm_name}'")
 
             credentials_list.append({
                 "vmid": vm["vmid"],
-                "username": student,
+                "username": student_username,
                 "password": password
             })
 
