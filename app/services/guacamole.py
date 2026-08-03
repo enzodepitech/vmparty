@@ -8,6 +8,8 @@ from fastapi import WebSocket
 from guacapy import Guacamole
 from guacapy.managers import ConnectionManager, UserManager
 
+from requests.exceptions import HTTPError, ConnectionError, RequestException
+
 from copy import deepcopy
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
@@ -57,7 +59,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
 
             connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
             connection_payload.update({
-                "name": vm_name,
+                "name": f"{vm_name}: ({student_username})",
                 "parameters": {
                     "hostname": vm_ip,
                     "username": student_username,
@@ -71,10 +73,19 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                 conn_id = connection["identifier"]
                 await websocket.send_text(f"Successfully created connection: '{vm_name}' (ID: {conn_id})")
                 logging.info(f"Successfully created connection: '{vm_name}' (ID: {conn_id})");
+            except HTTPError as e:
+                status_code = e.response.status_code
+                if status_code == 400:
+                    await websocket.send_text(f"Connection alreay existing, trying to fetch it...")
+                    connection = guac.connections.get_by_name()
+                    conn_id = connection["identifier"]
+                    await websocket.send_text(f"Successfully retrieved connection.")
+                else:
+                    await websocket.send_text(f"Error when creating connection: {str(e)}")
             except Exception as e:
                 await websocket.send_text(f"Error when creating connection: {str(e)}")
                 logging.error(f"Error when creating connection: {str(e)}");
-                
+
             try:
                 user_payload = {
                     "username": student_mail,
