@@ -85,7 +85,7 @@ async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
                     conn_id = connection["identifier"]
                     password = connection["parameters"]["password"]
                     student_username = connection["parameters"]["username"]
-                    vm_ip = vm_ip
+                    vm_ip = connection["parameters"]["hostname"]
                     
                     await websocket.send_text(f"Successfully retrieved connection.")
                 else:
