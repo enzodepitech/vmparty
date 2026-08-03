@@ -1,10 +1,12 @@
-import asyncio
 import os
 import yaml
-import logging
 import secrets
+
+from fastapi import WebSocket
+
 from guacapy import Guacamole
 from guacapy.managers import ConnectionManager
+
 from copy import deepcopy
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
@@ -12,7 +14,7 @@ GUAC_ADMIN_USER = os.getenv("GUACAMOLE_API_USER", "")
 GUAC_ADMIN_PASS = os.getenv("GUACAMOLE_API_PASSWORD", "")
 DATABASE_SOURCE = "postgresql"
 
-def _sync_register_guacamole_access(vars_file_path: str):
+async def register_guacamole_access(websocket: WebSocket, vars_file_path: str):
     """Synchronous execution block using guacapy."""
     # Parse Ansible vars file
     with open(vars_file_path, "r") as f:
@@ -20,7 +22,7 @@ def _sync_register_guacamole_access(vars_file_path: str):
         vms = data.get("vms", [])
 
     if not vms:
-        logging.error("No VMs found in vars file to register with Guacamole.")
+        await websocket.send_text("Error: No VMs found in vars file to register with Guacamole.")
         return
 
     # Authenticate to Guacamole REST API via admin account
@@ -30,7 +32,7 @@ def _sync_register_guacamole_access(vars_file_path: str):
         password=GUAC_ADMIN_PASS,
     )
 
-    logging.info("Successfully connected to guacamole.")
+    await websocket.send_text("Successfully connected to guacamole.")
 
     credentials_list = []
     
@@ -56,13 +58,13 @@ def _sync_register_guacamole_access(vars_file_path: str):
 
             connection = guac.connections.create(connection_payload)
             conn_id = connection["identifier"]
-            logging.info(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
+            await websocket.send_text(f"Created Guacamole SSH Connection: '{vm_name}' (ID: {conn_id})")
             
             try:
                 guac.users.create({"username": student})
             except Exception:
                 # User already exists
-                logging.info(f"User {student} already exists in guacamole database.")
+                await websocket.send_text(f"User {student} already exists in guacamole database.")
                 pass
 
             # Assign connection permission to the user
@@ -71,7 +73,7 @@ def _sync_register_guacamole_access(vars_file_path: str):
                 permission="READ",
                 connection_id=conn_id,
             )
-            logging.info(f"Granted student '{student}' access to '{vm_name}'")
+            await websocket.send_text(f"Granted student '{student}' access to '{vm_name}'")
 
             credentials_list.append({
                 "vmid": vm_ip,
@@ -82,7 +84,5 @@ def _sync_register_guacamole_access(vars_file_path: str):
     os.makedirs(os.path.dirname("storage/exports"), exist_ok=True)
     with open("storage/exports/credentials.yml", "w") as out_file:
         yaml.dump({"student_credentials": credentials_list}, out_file, default_flow_style=False)
+        await websocket.send_text("--- Guacamole successfully configured for all students! ---")
 
-async def register_guacamole_access(vars_file_path: str):
-    """Async wrapper to run synchronous guacapy calls inside FastAPI's event loop."""
-    await asyncio.to_thread(_sync_register_guacamole_access, vars_file_path)

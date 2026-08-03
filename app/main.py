@@ -155,8 +155,7 @@ async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(requi
 
             # Users registration (via guacamole rest api)
             try:
-                await register_guacamole_access("storage/exports/vms_conf.yml")
-                await websocket.send_text("--- Guacamole access successfully configured for all students! ---")
+                await register_guacamole_access(websocket, "storage/exports/vms_conf.yml")
             except Exception as e:
                 await websocket.send_text(f"--- Error configuring Guacamole access: {str(e)}")
 
