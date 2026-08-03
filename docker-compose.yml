@@ -6,10 +6,7 @@ services:
       - "guacamole.lilepiserver.duckdns.org:192.168.10.101"
     env_file:
       - /etc/environment
-    environment:
-      - SECRET_KEY
-      - ADMIN_USERNAME
-      - ADMIN_PASSWORD_HASH
+      - .env
     ports:
       - "8000:8000"
     volumes:
