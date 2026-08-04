@@ -28,7 +28,8 @@ async def run_ansible_edit(
 
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 
-            "ansible/03_edit.yml", 
+            "ansible/03_edit.yml",
+            "-i", "storage/exports/inventory.ini",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT
