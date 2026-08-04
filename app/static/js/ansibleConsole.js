@@ -1,5 +1,3 @@
-import { getCombinedEmails } from "./edit.js"
-
 let socket = null;
 let processRunning = false;
 

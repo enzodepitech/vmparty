@@ -165,4 +165,4 @@ function closeModal(modal) {
 }
 
 window.openEdit = openEdit;
-
+window.getCombinedEmails = getCombinedEmails;
