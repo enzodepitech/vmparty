@@ -5,8 +5,8 @@ let processRunning = false;
 // Action functions
 // -----------------------------------------------------
 
-function startEdit() {
-    startWebSocketProcess("/ws/edit");
+function startEdit(configId) {
+    startWebSocketProcess("/ws/edit/${configId}");
 }
 
 function startDeployment() {

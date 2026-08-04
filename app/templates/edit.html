@@ -127,7 +127,7 @@
         <h2>Modifier les informations</h2>
       </div>
 
-      <form id="editForm" onSubmit="return startEdit()">
+      <form id="editForm" onSubmit="return startEdit({{ config.id }})">
         <div class="modal-body">
           
           <input type="hidden" name="id" value="123">
