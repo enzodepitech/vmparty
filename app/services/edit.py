@@ -21,7 +21,10 @@ async def run_ansible_edit(
     }
 
     try:
-        await websocket.send_text("🚀 Démarrage de la mise à jour de la VM...")
+        await websocket.send_text(f"Playing Ansible for VM '{vmid}'...")
+        await websocket.send_text(f"Change VM Name to '{new_team_name}'...")
+        await websocket.send_text(f"Adding students: {students_to_add}")
+        await websocket.send_text(f"Removing students: {students_to_remove}")
 
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 

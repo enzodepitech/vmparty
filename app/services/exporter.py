@@ -1,6 +1,7 @@
 import yaml
 import os
 from app.database import get_db_connection
+from app.services.guacamole import sanitize_email_to_username
 
 def export_ansible_config():
     os.makedirs("storage/exports", exist_ok=True)
@@ -14,7 +15,7 @@ def export_ansible_config():
         
         vms_list.append({
             "vmid": conf["vm_id"],
-            "name": conf["team_name"].lower().strip().replace(" ", "-"),
+            "name": conf["team_name"],
             "ip": conf["vm_ip"],
             "students": emails
         })

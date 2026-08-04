@@ -1,0 +1,44 @@
+---
+- name: Hot edit Proxmox VM & Manage users
+  hosts: localhost
+  gather_facts: false
+  vars:
+    node_name: "pve"
+
+  tasks:
+    # -------------------------------------------------------------
+    # 1. Mise à jour du nom de la VM dans Proxmox
+    # -------------------------------------------------------------
+    - name: Update Proxmox VM Name (Hot Edit)
+      community.proxmox.proxmox:
+        api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
+        api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
+        vmid: "{{ target_vmid }}"
+        node: "{{ node_name }}"
+        name: "{{ new_team_name }}"
+        state: present
+
+    - name: Delete old student accounts & home directories
+      ansible.builtin.user:
+        name: "{{ item }}"
+        state: absent
+        remove: true  # Supprime aussi le répertoire /home/username
+        force: true   # Tue les processus de l'utilisateur s'il est encore connecté
+      loop: "{{ students_to_remove }}"
+      when: students_to_remove | length > 0
+
+    - name: Create new student user accounts
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        groups:
+          - groupwork
+          - sudo
+        append: true
+        shell: /bin/bash
+        create_home: true
+        state: present
+      loop: "{{ students_to_add }}"
+      when: students_to_add | length > 0
