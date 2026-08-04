@@ -6,9 +6,6 @@
     node_name: "pve"
 
   tasks:
-    # -------------------------------------------------------------
-    # 1. Mise à jour du nom de la VM dans Proxmox
-    # -------------------------------------------------------------
     - name: Update Proxmox VM Name (Hot Edit)
       community.proxmox.proxmox:
         api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
@@ -20,12 +17,16 @@
         hostname: "{{ new_team_name }}"
         state: present
 
+- name: Apply student changes inside target VM
+  hosts: "vm_{{ target_vmid }}"
+  become: true
+  tasks:
     - name: Delete old student accounts & home directories
       ansible.builtin.user:
         name: "{{ item }}"
         state: absent
-        remove: true  # Supprime aussi le répertoire /home/username
-        force: true   # Tue les processus de l'utilisateur s'il est encore connecté
+        remove: true
+        force: true
       loop: "{{ students_to_remove }}"
       when: students_to_remove | length > 0
 

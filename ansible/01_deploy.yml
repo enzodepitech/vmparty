@@ -19,7 +19,7 @@
         content: |
           [student_containers]
           {% for vm in vms %}
-          {{ vm.name }} ansible_host={{ vm.ip }} vmid={{ vm.vmid }}
+          vm_{{ vm.vmid }} ansible_host={{ vm.ip }} vmid={{ vm.vmid }}
           {% endfor %}
 
           [student_containers:vars]
