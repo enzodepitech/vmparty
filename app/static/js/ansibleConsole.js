@@ -6,7 +6,7 @@ let processRunning = false;
 // -----------------------------------------------------
 
 function startEdit(configId) {
-    startWebSocketProcess("/ws/edit/${configId}");
+    startWebSocketProcess(`/ws/edit/${configId}`);
 }
 
 function startDeployment() {
