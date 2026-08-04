@@ -73,34 +73,20 @@
                             <td class="p-4">
                                 <p class="p-1 w-full"> {{ config.student_emails }} </p>
                             </td>
-                            <!--
-                        <form action="/edit/{{ config.id }}" method="POST">
-                            <td class="p-4"><input type="text" name="team_name" value="{{ config.team_name }}"
-                                    class="border p-1 rounded w-full"></td>
-                            <td class="p-4"><input type="number" name="vm_id" value="{{ config.vm_id }}"
-                                    class="border p-1 rounded w-20"></td>
-                            <td class="p-4"><input type="text" name="vm_ip" value="{{ config.vm_ip }}"
-                                    class="border p-1 rounded w-36"></td>
-                            <td class="p-4"><input type="text" name="student_emails" value="{{ config.student_emails }}"
-                                    class="border p-1 rounded w-full"></td>
-                            <td class="p-4 flex justify-center gap-2">
-                                <button type="submit"
-                                    class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">Save</button>
-                        </form>
-                        -->
-                            <td class="p-4">
-                                <form action="/delete/{{ config.id }}" method="POST"
+                            <td class="flex gap-2 justify-center items-center p-4">
+                              <button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-500"" onclick="openEdit({{ config.id }})">Edit</button>
+                              <form action="/delete/{{ config.id }}" method="POST"
                                     onsubmit="return confirm('Delete this configuration?');">
-                                    <button type="submit"
-                                        class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Delete</button>
+                                  <button type="submit"
+                                          class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Delete</button>
                                 </form>
                             </td>
                         </div>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="p-4 text-center text-gray-500">No configurations found. Add one above!
-                        </td>
+                      <td colspan="5" class="p-4 text-center text-gray-500">No configurations found. Add one above!
+                      </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -136,6 +122,10 @@
             </div>
         </div>
     </div>
+
+    <div id="modal-container"></div>
+      
+    <script src="{{ url_for('static', path='js/edit.js') }}"></script>
     <script src="{{ url_for('static', path='js/ansibleConsole.js') }}"></script>
     <script src="{{ url_for('static', path='js/multipleStudentWrapper.js') }}"></script>
 </body>

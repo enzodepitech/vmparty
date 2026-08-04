@@ -10,10 +10,13 @@ import logging
 import asyncio
 import os
 
-from app.services.guacamole import register_guacamole_access
+from app.services.guacamole import register_guacamole_access, update_guacamole_resources
+from app.services.edit import run_ansible_edit
+
 from app.database import init_db, get_db_connection
 from app.services.exporter import export_ansible_config
 from app.auth import ADMIN_USERNAME, ADMIN_PASSWORD_HASH, verify_password, create_session_token, require_admin, require_admin_ws
+
 
 # --- Init app
 
@@ -70,28 +73,95 @@ async def add_config(
             conn.close()
     return RedirectResponse(url="/", status_code=303)
 
-@app.post("/edit/{config_id}")
-async def edit_config(
-    config_id: int,
-    team_name: str = Form(...),
-    vm_id: int = Form(...),
-    vm_ip: str = Form(...),
-    student_emails: str = Form(...),
-    admin_user: str = Depends(require_admin)
-):
+@app.get("/edit/{config_id}", response_class=HTMLResponse)
+async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin)):
     conn = get_db_connection()
-    conn.execute(
-        """UPDATE configs 
-           SET team_name = ?, vm_id = ?, vm_ip = ?, student_emails = ? 
-           WHERE id = ?""",
-        (team_name, vm_id, vm_ip, student_emails, config_id)
-    )
-    conn.commit()
+    config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
     conn.close()
-    return RedirectResponse(url="/", status_code=303)
+
+    student_mails_list = config["student_emails"].split(",")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="edit.html",
+        context={"config": config, "students": student_mails_list}
+    )
+
+@app.post("/ws/edit/{config_id}")
+async def edit_config(websocket: WebSocket,
+                      config_id: int,
+                      admin_user: str = Depends(require_admin_ws)
+                      ):
+    await websocket.accept()
+
+    try:
+        data = await websocket.receive_json()
+        
+        team_name = data.get("team_name")
+        vm_id = data.get("vm_id")
+        vm_ip = data.get("vm_ip")
+        student_emails = data.get("student_emails")
+    
+        conn = get_db_connection()
+        old_config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
+    
+        if not old_config:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Config introuvable")
+
+        old_list = set(filter(None, [s.strip() for s in old_config["student_emails"].split(",")]))
+        new_list = set(filter(None, [s.strip() for s in student_emails.split(",")]))
+        
+        to_add = list(new_list - old_list) # Students to add
+        to_remove = list(old_list - new_list) # Students to remove
+
+
+        try: 
+            # Edit server VM name & Update Linux users
+            ansible_success = await run_ansible_edit(
+                websocket,
+                vmid=vm_id,
+                new_team_name=team_name,
+                students_to_add=to_add,
+                students_to_remove=to_remove
+            )
+
+            if ansible_success == 0:
+                # Update guacamole access
+                await asyncio.to_thread(
+                    update_guacamole_resources,
+                    websocket,
+                    connection_id=str(old_config["guac_connection_id"]),
+                    new_team_name=team_name,
+                    add_emails=to_add,
+                    remove_emails=to_remove
+                )
+
+                # Update DB
+                conn.execute(
+                    """UPDATE configs 
+                    SET team_name = ?, vm_id = ?, vm_ip = ?, student_emails = ? 
+                    WHERE id = ?""",
+                    (team_name, vm_id, vm_ip, student_emails, config_id)
+                )
+                conn.commit()
+            else:
+                await websocket.send_text("Ansible edit process did not ended successfully.")
+        except Exception as e:
+            conn.rollback()
+            raise HTTPException(status_code=500, detail=f"Échec de l'édition : {str(e)}")
+        finally:
+            conn.close()
+    except WebSocketDisconnect:
+        logging.info("Client disconnected during deployment execution.")
+    finally:
+        await websocket.close()
 
 @app.post("/delete/{config_id}")
 async def delete_config(config_id: int, admin_user: str = Depends(require_admin)):
+    # Delete it in proxmox
+
+    # Delete it in the database only if delete on server worked
     conn = get_db_connection()
     conn.execute("DELETE FROM configs WHERE id = ?", (config_id,))
     conn.commit()
@@ -153,19 +223,11 @@ async def deploy_websocket(websocket: WebSocket, admin_user: str = Depends(requi
             await websocket.send_text("--- Ansible Deployment Finished Successfully ---")
             await websocket.send_text("--- Starting Registering Guacamole connections... ---")
 
-            # Users registration (via guacamole rest api)
             try:
                 await register_guacamole_access(websocket, "storage/exports/vms_conf.yml")
-            except Exception as e:
-                await websocket.send_text(f"--- Error configuring Guacamole access: {str(e)}")
-
-            # Provide credentials via Ansible
-            try:
                 await provide_student_credentials(websocket)
-                await websocket.send_text("--- Credentials successfully configured for all students! ---")
             except Exception as e:
-                await websocket.send_text(f"--- Error configuring credentials access: {str(e)}")
-                pass
+                await websocket.send_text(f"--- Error: {str(e)}")
                 
         else:
             await websocket.send_text(f"--- Deployment Failed (Exit Code {process.returncode}) ---")
