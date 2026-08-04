@@ -74,7 +74,7 @@ async def add_config(
     return RedirectResponse(url="/", status_code=303)
 
 @app.get("/edit/{config_id}", response_class=HTMLResponse)
-async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin_ws)):
+async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin)):
     conn = get_db_connection()
     config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
     conn.close()
@@ -87,10 +87,10 @@ async def get_edit_page(request: Request, config_id: int, admin_user: str = Depe
         context={"config": config, "students": student_mails_list}
     )
 
-@app.post("/ws/edit/{config_id}")
-async def edit_config(websocket: WebSocket,
-                      config_id: int,
-                      admin_user: str = Depends(require_admin_ws)
+@app.websocket("/ws/edit/{config_id}")
+async def edit_config(config_id: int,
+                      websocket: WebSocket,
+                      admin_user: str = Depends(require_admin_ws),
                       ):
     await websocket.accept()
 
