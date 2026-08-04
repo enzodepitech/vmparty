@@ -7,12 +7,13 @@
     node_name: "pve"
 
   tasks:
-    - name: Update Proxmox VM Name (Hot Edit)
+    - name: Update Proxmox VM Name
       community.proxmox.proxmox:
         api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
         api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
+        validate_certs: false
         vmid: "{{ target_vmid }}"
         node: "{{ node_name }}"
         hostname: "{{ new_team_name }}"
