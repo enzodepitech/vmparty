@@ -38,8 +38,7 @@ function startWebSocketProcess(url) {
     statusBadge.className = "px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium";
 
     // Establish WebSocket Connection
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}${url}`;
+    const wsUrl = `https://wss:${url}`;
 
     socket = new WebSocket(wsUrl);
 
