@@ -28,7 +28,7 @@ async def run_ansible_edit(
 
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 
-            "edit_vm.yml", 
+            "03_edit.yml", 
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT
