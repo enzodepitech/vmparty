@@ -17,6 +17,7 @@
         vmid: "{{ target_vmid }}"
         node: "{{ node_name }}"
         hostname: "{{ new_team_name }}"
+        cmode: 'tty'
         state: present
 
 - name: Apply student changes inside target VM
