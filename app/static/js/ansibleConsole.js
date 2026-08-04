@@ -5,11 +5,13 @@ let processRunning = false;
 // Action functions
 // -----------------------------------------------------
 
-// Disable when a process is running (optional)
-let actionButtons = ["submitBtn", "deploy-btn"];
+function startEdit() {
+    startWebSocketProcess("/ws/edit");
+}
 
-function startEdit() => startWebSocketProcess("/ws/edit");
-function startDeployment() => startWebSocketProcess("/ws/deploy");
+function startDeployment() {
+    startWebSocketProcess("/ws/deploy");
+}
 
 // -----------------------------------------------------
 // Utilities
@@ -31,10 +33,6 @@ function startWebSocketProcess(url) {
     // Clear previous logs
     terminal.innerHTML = "";
 
-    // Update UI state
-    for (actionButton in actionButtons) {
-        document.getElementById(actionButton).disabled = true;
-    }
     statusBadge.textContent = "Running...";
     statusBadge.className = "px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium";
 
@@ -64,9 +62,6 @@ function startWebSocketProcess(url) {
     };
 
     socket.onclose = () => {
-        for (actionButton in actionButtons) {
-            document.getElementById(actionButton).disabled = false;
-        }
         statusBadge.textContent = "Finished";
         statusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
         appendLogLine("[System] Connection closed.", "text-slate-500");
