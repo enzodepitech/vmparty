@@ -151,13 +151,18 @@ async def edit_config(config_id: int,
                 await websocket.send_text("Ansible edit process did not ended successfully.")
         except Exception as e:
             conn.rollback()
-            raise HTTPException(status_code=500, detail=f"Échec de l'édition : {str(e)}")
+            await websocket.send_text(f"Edition error: {str(e)}")
         finally:
             conn.close()
+            
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
     finally:
-        await websocket.close()
+        try:
+            await websocket.close()
+        except RuntimeError:
+            # Socket already closed
+            pass
 
 @app.post("/delete/{config_id}")
 async def delete_config(config_id: int, admin_user: str = Depends(require_admin)):

@@ -1,3 +1,5 @@
+import { getCombinedEmails } from "./edit.js"
+
 let socket = null;
 let processRunning = false;
 
@@ -6,7 +8,17 @@ let processRunning = false;
 // -----------------------------------------------------
 
 function startEdit(configId) {
-    startWebSocketProcess(`/ws/edit/${configId}`);
+    const editForm = document.getElementById("editForm");
+    const formData = new FormData(editForm);
+    
+    const payload = {
+        team_name: formData.get("name"),
+        vm_id: parseInt(formData.get("vm_id")),
+        vm_ip: formData.get("vm_ip"),
+        student_emails: getCombinedEmails()
+    };
+    
+    startWebSocketProcess(`/ws/edit/${configId}`, payload);
 }
 
 function startDeployment() {
@@ -17,7 +29,7 @@ function startDeployment() {
 // Utilities
 // -----------------------------------------------------
 
-function startWebSocketProcess(url) {
+function startWebSocketProcess(url, params) {
     // url: format /...
     // button_id: html button id string
     
@@ -46,6 +58,10 @@ function startWebSocketProcess(url) {
 
     socket.onopen = () => {
         appendLogLine("[System] Connection established.", "text-indigo-400");
+
+        if (url.includes("/ws/edit")) {
+            socket.send(JSON.stringify(params));
+        }
     };
 
     socket.onmessage = (event) => {

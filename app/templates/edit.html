@@ -130,7 +130,9 @@
       <form id="editForm" onSubmit="return startEdit({{ config.id }})">
         <div class="modal-body">
           
-          <input type="hidden" name="id" value="123">
+          <input type="hidden" name="id" value="{{ config.id }}">
+          <input type="hidden" name="vm_id" value="{{ config.vm_id }}">
+          <input type="hidden" name="vm_ip" value="{{ config.vm_ip }}">
 
           <div class="form-group">
             <label for="name">Name</label>
