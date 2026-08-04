@@ -1,6 +1,7 @@
 ---
 - name: Hot edit Proxmox VM & Manage users
   hosts: localhost
+  connection: local
   gather_facts: false
   vars:
     node_name: "pve"
