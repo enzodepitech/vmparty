@@ -20,6 +20,7 @@ function startDeployment() {
 function startWebSocketProcess(url) {
     // url: format /...
     // button_id: html button id string
+    
     if (processRunning) {
         console.log("A Web Socket Process is already running...");
         alert("A Web Socket Process is already running. Wait until finish.")
