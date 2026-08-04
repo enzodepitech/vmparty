@@ -17,7 +17,7 @@
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
         vmid: "{{ target_vmid }}"
         node: "{{ node_name }}"
-        name: "{{ new_team_name }}"
+        hostname: "{{ new_team_name }}"
         state: present
 
     - name: Delete old student accounts & home directories
