@@ -74,7 +74,7 @@ async def add_config(
     return RedirectResponse(url="/", status_code=303)
 
 @app.get("/edit/{config_id}", response_class=HTMLResponse)
-async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin)):
+async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin_ws)):
     conn = get_db_connection()
     config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
     conn.close()
@@ -93,6 +93,8 @@ async def edit_config(websocket: WebSocket,
                       admin_user: str = Depends(require_admin_ws)
                       ):
     await websocket.accept()
+
+    await websocket.send_text(f"Editing config {config_id}...")
 
     try:
         data = await websocket.receive_json()
