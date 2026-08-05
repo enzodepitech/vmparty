@@ -1,6 +1,6 @@
 ---
 - name: Configure Student LXC Environment
-  hosts: "vm_{vmid}"
+  hosts: "vm_{{ vmid }}"
   gather_facts: false
 
   tasks:
