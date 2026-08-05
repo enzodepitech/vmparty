@@ -122,7 +122,7 @@ def create_vm(vm_name, vm_id, vm_ip, student_emails):
             conn.close()
 
 def create_user(mail, password):
-    hashed_password = hash_password(password)
+    # hashed_password = hash_password(password)
     username = sanitize_email_to_username(mail)
     
     conn = None
@@ -130,7 +130,7 @@ def create_user(mail, password):
         conn = get_db_connection()
         conn.execute(
             "INSERT INTO vm_users (mail, username, password) VALUES (?, ?, ?)",
-            (mail, username, hashed_password)
+            (mail, username, password)
         )
         conn.commit()
     except sqlite3.IntegrityError as e:

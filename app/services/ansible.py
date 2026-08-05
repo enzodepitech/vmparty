@@ -6,6 +6,7 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 
 from app.database import get_user, get_vm, get_vm_byid
+from app.core.security import hash_password
 
 async def run_delete(websocket: WebSocket, id):
     vm_id, vm_ip, vm_name, _ = get_vm_byid(id)
@@ -113,14 +114,14 @@ async def run_edit(
         await process.wait()
         
         if process.returncode == 0:
-            await websocket.send_text("Successfully Updated VM via Ansible!")
+            await websocket.send_text("[EDIT] Successfully Updated VM via Ansible!")
             return True
         else:
-            await websocket.send_text(f"Error - Ansible exited with code {process.returncode}.")
+            await websocket.send_text(f"[EDIT] Error - Ansible exited with code {process.returncode}.")
             return False
 
     except Exception as e:
-        await websocket.send_text(f"Critical Error: {str(e)}")
+        await websocket.send_text(f"[EDIT] Critical Error: {str(e)}")
         return False
 
 async def run_provide(websocket: WebSocket, vm_id: int):
@@ -147,7 +148,7 @@ async def run_provide(websocket: WebSocket, vm_id: int):
             env=env
         )
 
-        await websocket.send_text(f"Starting Ansible Providing '{vm_id}:{vm_name}({vm_ip})'...")
+        await websocket.send_text(f"[PROVIDE] Starting Ansible Providing '{vm_id}:{vm_name}({vm_ip})'...")
 
         while True and process.stdout is not None:
             line = await process.stdout.readline()
@@ -158,14 +159,14 @@ async def run_provide(websocket: WebSocket, vm_id: int):
         await process.wait()
 
         if process.returncode == 0:
-            await websocket.send_text(f"[ANSIBLE PROVIDE] Successfully provided VM.")
+            await websocket.send_text(f"[PROVIDE] Successfully provided VM.")
         else:
-            await websocket.send_text(f"[ANSIBLE PROVIDE] Deployment Failed (Exit Code {process.returncode})")
+            await websocket.send_text(f"[PROVIDE] Deployment Failed (Exit Code {process.returncode})")
 
     except WebSocketDisconnect:
-        logging.info("Client disconnected during deployment execution.")
+        logging.info("[PROVIDE] Client disconnected during deployment execution.")
     except Exception as e:
-        await websocket.send_text(f"Error executing playbook: {str(e)}")
+        await websocket.send_text(f"[PROVIDE] Error executing playbook: {str(e)}")
 
 async def run_provision(websocket: WebSocket, vm_id):
     """
@@ -176,10 +177,10 @@ async def run_provision(websocket: WebSocket, vm_id):
     
     student_credentials = []
     for email in emails.split(","):
-        _, username, hashed_password = get_user(email)
+        _, username, password = get_user(email)
         student_credentials.append({
             "username": username,
-            "hashed_password": hashed_password
+            "hashed_password": hash_password(password)
         })
     
     # Deploy VMs via Ansible
@@ -203,7 +204,7 @@ async def run_provision(websocket: WebSocket, vm_id):
             env=env
         )
 
-        await websocket.send_text("--- Starting Ansible Deployment ---")
+        await websocket.send_text("[PROVISION] Starting Ansible Provisionning...")
 
         # Stream logs line-by-line in real time
         while True and process.stdout is not None:
@@ -215,12 +216,12 @@ async def run_provision(websocket: WebSocket, vm_id):
         await process.wait()
 
         if process.returncode == 0:
-            await websocket.send_text("--- Student Credentials Deployment Finished Successfully ---")
+            await websocket.send_text("[PROVISION] Successfully provisioned VM.")
         else:
-            await websocket.send_text(f"--- Deployment Failed (Exit Code {process.returncode}) ---")
+            await websocket.send_text(f"[PROVISION] Provision Failed (Exit Code {process.returncode}) ---")
 
     except WebSocketDisconnect:
-        logging.info("Client disconnected during deployment execution.")
+        logging.info("[PROVISION] Client disconnected during deployment execution.")
     except Exception as e:
-        await websocket.send_text(f"Error executing playbook: {str(e)}")
+        await websocket.send_text(f"[PROVISION] Error executing playbook: {str(e)}")
         
