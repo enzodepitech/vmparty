@@ -75,6 +75,36 @@ def get_vm_byid(id):
 
     return vm_id, vm_ip, vm_name, student_emails
 
+def delete_vm(config_id):
+    _, _, _, emails = get_vm_byid(config_id)
+
+    for email in emails.split(","):
+        delete_user(email)
+    
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM configs WHERE mail = ?", (config_id,))
+        conn.commit()
+        
+        if cursor.rowcount == 0:
+            logging.warning(f"No vm found with id '{config_id}'")
+            return False
+            
+        logging.info(f"VM '{config_id}' deleted successfully.")
+        return True
+
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+        logging.error(f"Error deleting VM '{config_id}': {e}")
+        return False
+    finally:
+        if conn:
+            conn.close()
+
 def create_vm(vm_name, vm_id, vm_ip, student_emails):
     conn = None
     try:
@@ -116,7 +146,7 @@ def delete_user(mail):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("DELETE FROM configs WHERE mail = ?", (mail,))
+        cursor.execute("DELETE FROM vm_users WHERE mail = ?", (mail,))
         conn.commit()
         
         if cursor.rowcount == 0:

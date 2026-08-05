@@ -11,7 +11,7 @@ import asyncio
 from app.services.guacamole import register_one_guacamole_access, update_guacamole_resources
 import app.services.ansible as ansible
 
-from app.database import init_db, get_db_connection, create_user, delete_user, create_vm
+from app.database import init_db, get_db_connection, create_user, delete_user, create_vm, delete_vm
 from app.auth import ADMIN_USERNAME, ADMIN_PASSWORD_HASH, verify_password, create_session_token, require_admin, require_admin_ws
 
 
@@ -204,17 +204,26 @@ async def edit_config(config_id: int,
 async def delete_config(config_id: int,
                         websocket: WebSocket,
                         admin_user: str = Depends(require_admin)):
-    # Delete it in proxmox
-    try:
-        await ansible.run_delete(websocket, config_id)
-    except Exception as e:
+    await websocket.accept()
 
-    # Delete it in the database only if delete on server worked
-    conn = get_db_connection()
-    conn.execute("DELETE FROM configs WHERE id = ?", (config_id,))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/", status_code=303)
+    await websocket.send_text(f"[DELETE] Delete config {config_id}...")
+
+    try:
+        # Delete in Proxmox
+        await ansible.run_delete(websocket, config_id)
+
+        # Delete it in the database only if delete on server worked
+        delete_vm(config_id)
+    except WebSocketDisconnect:
+        logging.info("Client disconnected during deployment execution.")
+    except Exception as e:
+        logging.info(f"[DELETE] Error when delete config {config_id}: {e}")
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            # Socket already closed
+            pass
 
 # ----------------------------------------------------
 # Login

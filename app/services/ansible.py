@@ -48,6 +48,7 @@ async def run_delete(websocket: WebSocket, id):
         logging.info("[DELETE] Client disconnected during deployment execution.")
     except Exception as e:
         await websocket.send_text(f"[DELETE] Error executing playbook: {str(e)}")
+        raise
 
 async def run_edit(
     websocket: WebSocket,
