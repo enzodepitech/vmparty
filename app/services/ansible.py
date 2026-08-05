@@ -6,7 +6,6 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 
 from app.database import get_user, get_vm, get_vm_byid
-from app.core.security import hash_password
 
 async def run_delete(websocket: WebSocket, id):
     vm_id, vm_ip, vm_name, _ = get_vm_byid(id)
@@ -65,10 +64,10 @@ async def run_edit(
     # Configure ansible variables
     students_to_add_config = []
     for student_mail in students_to_add:
-        _, username, hashed_password = get_user(student_mail)
+        _, username, password = get_user(student_mail)
         students_to_add_config.append({
             "username": username,
-            "hashed_password": hashed_password
+            "password": password
         })
 
     students_to_remove_config = []
@@ -180,7 +179,7 @@ async def run_provision(websocket: WebSocket, vm_id):
         _, username, password = get_user(email)
         student_credentials.append({
             "username": username,
-            "hashed_password": hash_password(password)
+            "password": password
         })
     
     # Deploy VMs via Ansible

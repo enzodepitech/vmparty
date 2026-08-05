@@ -44,7 +44,7 @@
     - name: Create student user accounts and add to sudo + groupwork
       ansible.builtin.user:
         name: "{{ item.username }}"
-        password: "{{ item.hashed_password }}"
+        password: "{{ item.password | ansible.builtin.password_hash('sha512') }}"
         groups: 
           - groupwork
           - sudo

@@ -2,7 +2,6 @@ import logging
 import sqlite3
 import os
 
-from app.core.security import hash_password
 from app.core.utils import sanitize_email_to_username
 
 DB_PATH = "storage/app.db"
@@ -122,7 +121,6 @@ def create_vm(vm_name, vm_id, vm_ip, student_emails):
             conn.close()
 
 def create_user(mail, password):
-    # hashed_password = hash_password(password)
     username = sanitize_email_to_username(mail)
     
     conn = None

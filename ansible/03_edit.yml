@@ -36,7 +36,7 @@
     - name: Create new student user accounts
       ansible.builtin.user:
         name: "{{ item.username }}"
-        password: "{{ item.password | password_hash('sha512') }}"
+        password: "{{ item.password | ansible.builtin.password_hash('sha512') }}"
         groups:
           - groupwork
           - sudo
