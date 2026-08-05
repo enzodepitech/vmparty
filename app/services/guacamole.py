@@ -112,11 +112,11 @@ async def register_one_guacamole_access(websocket: WebSocket, vm_id):
         password=GUAC_ADMIN_PASS
     )
 
-    await websocket.send_text("Successfully connected to guacamole.")
+    await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
 
     _, vm_ip, vm_name, students = get_vm(vm_id)
 
-    for student in students:
+    for student in students.split(","):
         mail, username, hashed_password = get_user(student)
         
         connection_name = f"{vm_name}: ({username})"
