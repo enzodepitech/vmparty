@@ -6,6 +6,8 @@ let processRunning = false;
 // -----------------------------------------------------
 
 function startEdit(configId) {
+    if (event) event.preventDefault();
+    
     const editForm = document.getElementById("editForm");
     const formData = new FormData(editForm);
     
@@ -20,10 +22,12 @@ function startEdit(configId) {
 }
 
 function startDeployment() {
+    if (event) event.preventDefault();
     startWebSocketProcess("/ws/deploy");
 }
 
 function startProvide() {
+    if (event) event.preventDefault();
     const editForm = document.getElementById("addForm");
     const formData = new FormData(editForm);
     
@@ -98,9 +102,8 @@ function startWebSocketProcess(url, params) {
         statusBadge.textContent = "Finished";
         statusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
         appendLogLine("[System] Connection closed.", "text-slate-500");
+        processRunning = false;
     };
-
-    processRunning = false;
 }
 
 function appendLogLine(text, colorClass = "text-slate-300") {
