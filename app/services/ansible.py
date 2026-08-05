@@ -5,7 +5,7 @@ import logging
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from database import get_user, get_vm
+from app.database import get_user, get_vm
 
 async def run_edit(
     websocket: WebSocket,
@@ -51,7 +51,7 @@ async def run_edit(
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 
             "ansible/03_edit.yml",
-            "-i", "storage/exports/inventory.ini",
+            "-i", "ansible/inventory.ini",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT
@@ -97,7 +97,7 @@ async def run_provide(websocket: WebSocket, vm_id: int):
     try:
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
-            "ansible/01_deploy.yml",
+            "ansible/01_provider.yml",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -153,11 +153,10 @@ async def run_provision(websocket: WebSocket, vm_id):
     try:
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
-            "ansible/02_provider.yml",
-            "-i", "storage/exports/inventory.ini",
-            "-l", f"vm_{vm_id}"
+            "ansible/02_provisioner.yml",
+            "-i", "ansible/inventory.ini",
             "--private-key", "/root/.ssh/id_ed25519",
-            "-e", "@storage/exports/credentials.yml",
+            "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             env=env

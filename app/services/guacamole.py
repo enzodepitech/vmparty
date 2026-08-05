@@ -11,7 +11,7 @@ from guacapy.managers import ConnectionManager, UserManager
 
 from copy import deepcopy
 
-from database import get_user, get_vm
+from app.database import get_user, get_vm
 
 from app.core.security import create_user_password
 
