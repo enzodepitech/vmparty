@@ -203,7 +203,7 @@ async def edit_config(config_id: int,
 @app.websocket("/ws/delete/{config_id}")
 async def delete_config(config_id: int,
                         websocket: WebSocket,
-                        admin_user: str = Depends(require_admin)):
+                        admin_user: str = Depends(require_admin_ws)):
     await websocket.accept()
 
     await websocket.send_text(f"[DELETE] Delete config {config_id}...")
