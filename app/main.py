@@ -73,7 +73,11 @@ async def add_config(websocket: WebSocket,
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
 
         # Create vm config in the database
-        create_vm(team_name, vm_id, vm_ip, student_emails)
+        try:
+            create_vm(team_name, vm_id, vm_ip, student_emails)
+        except ValueError as ve:
+            logging.info(f"[ADD] Error when registring the vm: {str(ve)}")
+            raise
 
         await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
 
@@ -93,8 +97,6 @@ async def add_config(websocket: WebSocket,
         await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
-    except ValueError as ve:
-        logging.info(f"[ADD] Error when adding the vm: {str(ve)}")
     finally:
         try:
             await websocket.close()
