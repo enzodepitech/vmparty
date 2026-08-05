@@ -129,7 +129,7 @@ def create_user(mail, password):
     try:
         conn = get_db_connection()
         conn.execute(
-            "INSERT INTO configs (mail, username, password) VALUES (?, ?, ?)",
+            "INSERT INTO vm_users (mail, username, password) VALUES (?, ?, ?)",
             (mail, username, hashed_password)
         )
         conn.commit()
