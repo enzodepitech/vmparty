@@ -3,38 +3,25 @@
   hosts: localhost
   connection: local
   gather_facts: false
-  vars_files:
-    - ../storage/exports/vms_conf.yml
 
   tasks:
-    - name: Create a directory if it does not exist
-      ansible.builtin.file:
-        path: ../storage/exports
-        state: directory
-        mode: '0700'
+    - name: Add vm to the inventory
+      ansible.builtin.lineinfile:
+        path: ../ansible/inventory.ini
+        create: true
+        mode: '0644'
+        regexp: '^vm_{{ vmid }}\s'
+        line: 'vm_{{ vmid }} ansible_host={{ ip }} vmid={{ vmid }}'
+        insertafter: '^\[student_containers\]'
 
-    - name: Generate dynamic inventory
-      ansible.builtin.copy:
-        dest: ../storage/exports/inventory.ini
-        content: |
-          [student_containers]
-          {% for vm in vms %}
-          vm_{{ vm.vmid }} ansible_host={{ vm.ip }} vmid={{ vm.vmid }}
-          {% endfor %}
-
-          [student_containers:vars]
-          ansible_user=root
-          ansible_ssh_private_key_file=/root/.ssh/id_ed25519
-          ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-
-    - name: Create VMs
+    - name: Create VM {{ vmid }}
       community.proxmox.proxmox:
         api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
         api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
-        vmid: "{{ item.vmid }}"
-        hostname: "{{ item.name }}"
+        vmid: "{{ vmid }}"
+        hostname: "{{ name }}"
         node: "pve"
         validate_certs: false
         cpus: 2
@@ -45,22 +32,20 @@
           storage: "local-lvm"
           size: 8
         netif:
-          net0: "name=eth0,gw=192.168.10.1,ip={{ item.ip }}/24,bridge=vmbr0"
+          net0: "name=eth0,gw=192.168.10.1,ip={{ ip }}/24,bridge=vmbr0"
         ostemplate: "local:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
         pubkey: "{{ lookup('file', '/root/.ssh/id_ed25519.pub') | trim }}"
         state: present
         onboot: true
         cmode: 'tty'
-      loop: "{{ vms }}"
 
-    - name: Start VMs
+    - name: Start VM {{ vmid }}
       community.proxmox.proxmox:
         api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
         api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
-        vmid: "{{ item.vmid }}"
+        vmid: "{{ vmid }}"
         validate_certs: false
         state: started
         timeout: 90
-      loop: "{{ vms }}"

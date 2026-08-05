@@ -26,7 +26,7 @@
   tasks:
     - name: Delete old student accounts & home directories
       ansible.builtin.user:
-        name: "{{ item }}"
+        name: "{{ item.username }}"
         state: absent
         remove: true
         force: true
