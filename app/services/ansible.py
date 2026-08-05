@@ -129,7 +129,7 @@ async def run_provide(websocket: WebSocket, vm_id: int):
     # Deploy VMs via Ansible
     extra_vars = {
         "vmid": vm_id,
-        "name": vm_name,
+        "vm_name": vm_name,
         "ip": vm_ip,
         "students": emails
     }
@@ -170,12 +170,12 @@ async def run_provide(websocket: WebSocket, vm_id: int):
 async def run_provision(websocket: WebSocket, vm_id):
     """
     """
-    await websocket.send_text("--- Starting Credentials Provisionning ---")
+    await websocket.send_text("[PROVISION] Provisionning VM...")
 
     _, _, _, emails = get_vm(vm_id)
     
     student_credentials = []
-    for email in emails:
+    for email in emails.split(","):
         _, username, hashed_password = get_user(email)
         student_credentials.append({
             "username": username,

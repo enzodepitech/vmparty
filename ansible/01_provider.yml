@@ -21,7 +21,7 @@
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
         vmid: "{{ vmid }}"
-        hostname: "{{ name }}"
+        hostname: "{{ vm_name }}"
         node: "pve"
         validate_certs: false
         cpus: 2
