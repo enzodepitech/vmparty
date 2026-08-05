@@ -86,7 +86,7 @@ def delete_vm(config_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("DELETE FROM configs WHERE mail = ?", (config_id,))
+        cursor.execute("DELETE FROM configs WHERE id = ?", (config_id,))
         conn.commit()
         
         if cursor.rowcount == 0:
