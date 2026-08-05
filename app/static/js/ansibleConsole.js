@@ -5,7 +5,13 @@ let processRunning = false;
 // Action functions
 // -----------------------------------------------------
 
-function startEdit(configId) {
+function startDelete(event, configId) {
+    if (event) event.preventDefault();
+
+    startWebSocketProcess(`/ws/delete/${configId}`);
+}
+
+function startEdit(event, configId) {
     if (event) event.preventDefault();
     
     const editForm = document.getElementById("editForm");
@@ -21,12 +27,7 @@ function startEdit(configId) {
     startWebSocketProcess(`/ws/edit/${configId}`, payload);
 }
 
-function startDeployment() {
-    if (event) event.preventDefault();
-    startWebSocketProcess("/ws/deploy");
-}
-
-function startProvide() {
+function startProvide(event) {
     if (event) event.preventDefault();
     const editForm = document.getElementById("addForm");
     const formData = new FormData(editForm);
@@ -45,7 +46,7 @@ function startProvide() {
 // Utilities
 // -----------------------------------------------------
 
-function startWebSocketProcess(url, params) {
+function startWebSocketProcess(url, params = {}) {
     // url: format /...
     // button_id: html button id string
     

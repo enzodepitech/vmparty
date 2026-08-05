@@ -1,0 +1,42 @@
+---
+- name: Delete VM from Promox Server
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    node_name: "pve"
+
+  tasks:
+    - name: Stop VM
+      community.proxmox.proxmox:
+        api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
+        api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
+        validate_certs: false
+        vmid: "{{ vmid }}"
+        node: "{{ node_name }}"
+        cmode: 'tty'
+        state: stopped
+        force: true
+
+    - name: Wait for VM SSH port to close
+      ansible.builtin.wait_for:
+        host: "{{ vm_ip }}"
+        port: 22
+        state: stopped
+        timeout: 30
+        
+    - name: Delete VM
+      community.proxmox.proxmox:
+        api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
+        api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
+        validate_certs: false
+        vmid: "{{ vmid }}"
+        node: "{{ node_name }}"
+        cmode: 'tty'
+        state: absent
+        force: true
+        destroy_unreferenced_disks: true

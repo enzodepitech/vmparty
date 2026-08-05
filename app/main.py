@@ -200,10 +200,14 @@ async def edit_config(config_id: int,
             # Socket already closed
             pass
 
-@app.post("/delete/{config_id}")
-async def delete_config(config_id: int, admin_user: str = Depends(require_admin)):
+@app.websocket("/ws/delete/{config_id}")
+async def delete_config(config_id: int,
+                        websocket: WebSocket,
+                        admin_user: str = Depends(require_admin)):
     # Delete it in proxmox
-    # todo
+    try:
+        await ansible.run_delete(websocket, config_id)
+    except Exception as e:
 
     # Delete it in the database only if delete on server worked
     conn = get_db_connection()

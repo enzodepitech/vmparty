@@ -62,6 +62,19 @@ def get_vm(vm_id):
 
     return vm_id, vm_ip, vm_name, student_emails
 
+def get_vm_byid(id):
+    conn = None
+    conn = get_db_connection()
+    vm_config = conn.execute("SELECT * FROM configs WHERE id = ?", (id,)).fetchone()
+    conn.close()
+
+    vm_id = vm_config["vm_id"]
+    vm_ip = vm_config["vm_ip"]
+    vm_name = vm_config["team_name"]
+    student_emails = vm_config["student_emails"]
+
+    return vm_id, vm_ip, vm_name, student_emails
+
 def create_vm(vm_name, vm_id, vm_ip, student_emails):
     conn = None
     try:
