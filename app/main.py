@@ -70,9 +70,13 @@ async def add_config(websocket: WebSocket,
         vm_ip = data.get("vm_ip")
         student_emails = data.get("student_emails")
 
-        await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
+        # Create users in the database
+        await websocket.send_text(f"[ADD] Starting registring students...")
+        for mail in student_emails.split(","):
+            create_user(mail, create_user_password())
 
         # Create vm config in the database
+        await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
         create_vm(team_name, vm_id, vm_ip, student_emails)
 
         await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
@@ -96,6 +100,9 @@ async def add_config(websocket: WebSocket,
     except ValueError as ve:
         await websocket.send_text(f"[ADD] Error when registring the vm: {str(ve)}")
         logging.error(f"[ADD] Error when registring the vm: {str(ve)}")
+    except TypeError as te:
+        await websocket.send_text(f"[ADD] Type Error: {str(te)}")
+        logging.error(f"[ADD] Type Error: {str(te)}")
     finally:
         try:
             await websocket.close()
