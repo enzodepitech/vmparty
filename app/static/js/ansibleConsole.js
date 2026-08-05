@@ -24,7 +24,17 @@ function startDeployment() {
 }
 
 function startProvide() {
-    startWebSocketProcess("/ws/add");
+    const editForm = document.getElementById("addForm");
+    const formData = new FormData(editForm);
+    
+    const payload = {
+        team_name: formData.get("team_name"),
+        vm_id: parseInt(formData.get("vm_id")),
+        vm_ip: formData.get("vm_ip"),
+        student_emails: formData.get("student_emails")
+    };
+    
+    startWebSocketProcess("/ws/add", payload);
 }
 
 // -----------------------------------------------------
@@ -62,6 +72,9 @@ function startWebSocketProcess(url, params) {
         appendLogLine("[System] Connection established.", "text-indigo-400");
 
         if (url.includes("/ws/edit")) {
+            socket.send(JSON.stringify(params));
+        }
+        else if (url.includes("/ws/add")) {
             socket.send(JSON.stringify(params));
         }
     };

@@ -54,30 +54,43 @@ async def read_dashboard(request: Request, admin_user: str = Depends(require_adm
 # ----------------------------------------------------
 
 @app.websocket("/ws/add")
-async def add_config(
-        websocket: WebSocket,
-        team_name: str = Form(...),
-        vm_id: int = Form(...),
-        vm_ip: str = Form(...),
-        student_emails: str = Form(...),
-        admin_user: str = Depends(require_admin_ws)
-):
+async def add_config(websocket: WebSocket,
+                     admin_user: str = Depends(require_admin_ws)
+                     ):
     await websocket.accept()
 
-    await websocket.send_text(f"Registring VM '{vm_id}:{team_name}'")
-
     try:
+        await websocket.send_text(f"[ADD] Fetching data from front...")
+        
+        # Fetch data
+        data = await websocket.receive_json()
+        
+        team_name = data.get("team_name")
+        vm_id = data.get("vm_id")
+        vm_ip = data.get("vm_ip")
+        student_emails = data.get("student_emails")
+
+        await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
+
         # Create vm config in the database
         create_vm(team_name, vm_id, vm_ip, student_emails)
+
+        await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
 
         # Run provider playbook
         await ansible.run_provide(websocket, vm_id)
 
+        await websocket.send_text(f"[ADD] Successfully Provide VM.")
+
         # Run provisioner playbook
         await ansible.run_provision(websocket, vm_id)
 
+        await websocket.send_text(f"[ADD] Successfully Provision VM.")
+
         # Register vm guacamole access
         await register_one_guacamole_access(websocket, vm_id)
+
+        await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
     finally:
