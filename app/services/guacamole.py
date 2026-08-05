@@ -49,8 +49,14 @@ async def update_guacamole_resources(websocket: WebSocket,
         # -------------------------------------------------------------
         # Rename guacamole connection
         # -------------------------------------------------------------
+        
         connection = guac.connections.get_by_name(connection_name)
-        connection_id = connection["identifier"]
+        try:
+            connection_id = connection["identifier"]
+        except TypeError as te:
+            logging.info(f"[EDIT] Type Error: {str(te)}")
+            return
+
         await websocket.send_text(f"[GUACAMOLE] Successfully get connection: {connection}")
         if connection["name"] != new_team_name:
             renamed_connection = deepcopy(connection)

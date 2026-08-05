@@ -199,8 +199,6 @@ async def edit_config(config_id: int,
             
     except WebSocketDisconnect:
         logging.info("[EDIT] Client disconnected during deployment execution.")
-    except TypeError as te:
-        logging.info(f"[EDIT] Type Error: {str(te)}")
     finally:
         try:
             await websocket.close()
