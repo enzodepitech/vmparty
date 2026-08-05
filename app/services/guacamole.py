@@ -1,19 +1,15 @@
 import os
-import sqlite3
-import yaml
 import logging
 from requests.exceptions import HTTPError, RequestException
 
 from fastapi import WebSocket
 
 from guacapy import Guacamole
-from guacapy.managers import ConnectionManager, UserManager
+from guacapy.managers import ConnectionManager
 
 from copy import deepcopy
 
 from app.database import get_user, get_vm
-
-from app.core.security import create_user_password
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
 GUAC_ADMIN_USER = os.getenv("GUACAMOLE_API_USER", "")
