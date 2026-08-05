@@ -2,7 +2,7 @@ import logging
 import sqlite3
 import os
 
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password
 from app.core.utils import sanitize_email_to_username
 
 DB_PATH = "storage/app.db"
