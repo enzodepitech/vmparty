@@ -73,6 +73,7 @@ def create_vm(vm_name, vm_id, vm_ip, student_emails):
         conn.commit()
     except sqlite3.IntegrityError:
         logging.error("VM ID must be unique.")
+        raise ValueError("Cannot add VM: VM ID must be unique")
     finally:
         if conn:
             conn.close()

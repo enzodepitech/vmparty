@@ -93,6 +93,8 @@ async def add_config(websocket: WebSocket,
         await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
+    except ValueError as ve:
+        logging.info(f"[ADD] Error when adding the vm: {str(ve)}")
     finally:
         try:
             await websocket.close()
