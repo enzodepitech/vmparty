@@ -170,8 +170,7 @@ async def edit_config(config_id: int,
                 students_to_remove=to_remove
             )
 
-
-            if ansible_success == 0:
+            if ansible_success:
                 # Update guacamole access
                 await asyncio.to_thread(
                     update_guacamole_resources,
