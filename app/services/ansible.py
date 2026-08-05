@@ -123,8 +123,6 @@ async def run_provide(websocket: WebSocket, vm_id: int):
         logging.info("Client disconnected during deployment execution.")
     except Exception as e:
         await websocket.send_text(f"Error executing playbook: {str(e)}")
-    finally:
-        await websocket.close()
 
 async def run_provision(websocket: WebSocket, vm_id):
     """
