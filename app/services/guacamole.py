@@ -55,7 +55,7 @@ async def update_guacamole_resources(websocket: WebSocket,
             try:
                 guac.connections.update(connection_id, renamed_connection)
             except ValueError:
-                await websocket.send_text(f"Error when rename connection, invalid payload: {renamed_connection}")
+                await websocket.send_text(f"[GUACAMOLE] Error when rename connection, invalid payload: {renamed_connection}")
 
         # -------------------------------------------------------------
         # Remove access to deleted students
@@ -134,12 +134,12 @@ async def register_one_guacamole_access(websocket: WebSocket, vm_id):
         try:
             connection = guac.connections.create(connection_payload)
             conn_id = connection["identifier"]
-            await websocket.send_text(f"Successfully created connection: '{vm_name}' (ID: {conn_id})")
-            logging.info(f"Successfully created connection: '{vm_name}' (ID: {conn_id})");
+            await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_name}' (ID: {conn_id})")
+            logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_name}' (ID: {conn_id})");
             
             # Create user in the database
         except TypeError as e:
-            await websocket.send_text(f"Error: Connection already exists.")
+            await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
             raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
 
         # Create guacamole user
@@ -150,7 +150,7 @@ async def register_one_guacamole_access(websocket: WebSocket, vm_id):
         except HTTPError as e:
             status_code = e.response.status_code
             if status_code == 400:
-                await websocket.send_text(f"User {mail} already exists.")
+                await websocket.send_text(f"[GUACAMOLE] User {mail} already exists.")
             else:
                 raise
 
@@ -161,10 +161,10 @@ async def register_one_guacamole_access(websocket: WebSocket, vm_id):
                 permission="READ",
                 connection_id=conn_id,
             )
-            await websocket.send_text(f"Successfully granted student '{mail}:{username}' access to '{vm_name}'")
+            await websocket.send_text(f"[GUACAMOLE] Successfully granted student '{mail}:{username}' access to '{vm_name}'")
         except HTTPError as e:
             status_code = e.response.status_code
             if status_code == 500:
-                await websocket.send_text(f"Connection already assigned for '{mail}'")
+                await websocket.send_text(f"[GUACAMOLE] Connection already assigned for '{mail}'")
             else:
                 raise
