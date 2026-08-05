@@ -53,7 +53,7 @@ async def read_dashboard(request: Request, admin_user: str = Depends(require_adm
 # Action Routes (Add, Delete, Edit)
 # ----------------------------------------------------
 
-@app.websocket("/add")
+@app.websocket("/ws/add")
 async def add_config(
         websocket: WebSocket,
         team_name: str = Form(...),

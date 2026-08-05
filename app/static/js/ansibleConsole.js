@@ -23,6 +23,10 @@ function startDeployment() {
     startWebSocketProcess("/ws/deploy");
 }
 
+function startProvide() {
+    startWebSocketProcess("/ws/add");
+}
+
 // -----------------------------------------------------
 // Utilities
 // -----------------------------------------------------
