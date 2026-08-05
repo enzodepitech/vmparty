@@ -35,7 +35,7 @@ USER_PAYLOAD_TEMPLATE = {
 }
 
 async def update_guacamole_resources(websocket: WebSocket,
-                                     connection_id: str,
+                                     connection_name: str,
                                      new_team_name: str,
                                      add_emails: list[str],
                                      remove_emails: list[str]
@@ -49,7 +49,8 @@ async def update_guacamole_resources(websocket: WebSocket,
         # -------------------------------------------------------------
         # Rename guacamole connection
         # -------------------------------------------------------------
-        connection = guac.connections.details(connection_id)
+        connection = guac.connections.get_by_name(connection_name)
+        connection_id = connection["identifier"]
         await websocket.send_text(f"[GUACAMOLE] Successfully get connection: {connection}")
         if connection["name"] != new_team_name:
             renamed_connection = deepcopy(connection)

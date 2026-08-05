@@ -175,7 +175,7 @@ async def edit_config(config_id: int,
                 await asyncio.to_thread(
                     update_guacamole_resources,
                     websocket,
-                    connection_id=str(old_config["guac_connection_id"]),
+                    connection_name=old_config["team_name"],
                     new_team_name=team_name,
                     add_emails=to_add,
                     remove_emails=to_remove
@@ -198,7 +198,9 @@ async def edit_config(config_id: int,
             conn.close()
             
     except WebSocketDisconnect:
-        logging.info("Client disconnected during deployment execution.")
+        logging.info("[EDIT] Client disconnected during deployment execution.")
+    except TypeError as te:
+        logging.info(f"[EDIT] Type Error: {str(te)}")
     finally:
         try:
             await websocket.close()
