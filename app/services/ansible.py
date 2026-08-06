@@ -80,8 +80,8 @@ async def run_edit(
     extra_vars = {
         "target_vmid": vmid,
         "new_team_name": new_team_name,
-        "students_to_add": students_to_add,
-        "students_to_remove": students_to_remove
+        "students_to_add": students_to_add_config,
+        "students_to_remove": students_to_remove_config
     }
 
     # Play ansible edit
