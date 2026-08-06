@@ -8,7 +8,7 @@
     - name: Check if inventory file exists
       ansible.builtin.stat:
         path: ../ansible/inventory.ini
-        register: inventory_file
+      register: inventory_file
 
     - name: Create initial inventory file if missing
       ansible.builtin.copy:
