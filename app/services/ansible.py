@@ -86,10 +86,10 @@ async def run_edit(
 
     # Play ansible edit
     try:
-        await websocket.send_text(f"Playing Ansible for VM '{vmid}'...")
-        await websocket.send_text(f"Change VM Name to '{new_team_name}'...")
-        await websocket.send_text(f"Adding students: {students_to_add_config}")
-        await websocket.send_text(f"Removing students: {students_to_remove_config}")
+        await websocket.send_text(f"[EDIT] [ANSIBLE] Playing Ansible for VM '{vmid}'...")
+        await websocket.send_text(f"[EDIT] [ANSIBLE] Change VM Name to '{new_team_name}'...")
+        await websocket.send_text(f"[EDIT] [ANSIBLE] Adding students: {students_to_add_config}")
+        await websocket.send_text(f"[EDIT] [ANSIBLE] Removing students: {students_to_remove_config}")
 
         # -l to not rename only play user changes
         process = await asyncio.create_subprocess_exec(

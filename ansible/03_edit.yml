@@ -21,7 +21,7 @@
         state: present
 
 - name: Apply student changes inside target VM
-  hosts: "vm_{{ target_vmid }}"
+  hosts: student_containers
   become: true
   tasks:
     - name: Delete old student accounts & home directories
