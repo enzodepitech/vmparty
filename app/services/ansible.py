@@ -91,11 +91,13 @@ async def run_edit(
         await websocket.send_text(f"Adding students: {students_to_add_config}")
         await websocket.send_text(f"Removing students: {students_to_remove_config}")
 
+        # -l to not rename only play user changes
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 
             "ansible/03_edit.yml",
             "-i", "ansible/inventory.ini",
             "-e", json.dumps(extra_vars),
+            "-l", f"vm_{vmid}",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT
         )

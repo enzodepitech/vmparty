@@ -129,23 +129,27 @@ async def edit_config(config_id: int,
                       ):
     await websocket.accept()
 
-    await websocket.send_text(f"Editing config {config_id}...")
+    await websocket.send_text(f"[EDIT] Editing config {config_id}...")
 
     try:
+        await websocket.send_text("[EDIT] Fetching data...")
         data = await websocket.receive_json()
         
         team_name = data.get("team_name")
         vm_id = data.get("vm_id")
         vm_ip = data.get("vm_ip")
         student_emails = data.get("student_emails")
-    
+
+        await websocket.send_text("[EDIT] Fetching old VM configuration...")
         conn = db.get_db_connection()
         old_config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
     
         if not old_config:
             conn.close()
-            raise HTTPException(status_code=404, detail="Config introuvable")
+            await websocket.send_text("[EDIT] Error: no configuration matched found...")
+            raise HTTPException(status_code=404, detail="No configuration matched")
 
+        await websocket.send_text("[EDIT] Processing students to add and remove configuration...")
         old_list = set(filter(None, [s.strip() for s in old_config["student_emails"].split(",")]))
         new_list = set(filter(None, [s.strip() for s in student_emails.split(",")]))
         
@@ -153,13 +157,17 @@ async def edit_config(config_id: int,
         to_remove = list(old_list - new_list) # Students to remove
 
         # Register new students and delete olds
+        await websocket.send_text("[EDIT] Creating students to add in DataBase...")
         for mail in to_add:
             db.create_user(mail, create_user_password())
+
+        await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
         for mail in to_remove:
             db.delete_user(mail)
 
         try: 
             # Edit server VM name & Update Linux users
+            await websocket.send_text("[EDIT] Ansible updating VM on server...")
             ansible_success = await ansible.run_edit(
                 websocket,
                 vmid=vm_id,
@@ -170,14 +178,15 @@ async def edit_config(config_id: int,
 
             if ansible_success:
                 # Update guacamole access
-                await asyncio.to_thread(
-                    guacamole.update_guacamole_resources,
+                await websocket.send_text("[EDIT] Updating Guacamole Resources...")
+                await guacamole.update_guacamole_resources(
                     websocket,
                     old_team_name=old_config["team_name"],
                     add_emails=to_add,
                     remove_emails=to_remove
                 )
 
+                await websocket.send_text("[EDIT] Updating DataBase...")
                 # Update DB
                 conn.execute(
                     """UPDATE configs 
@@ -186,11 +195,13 @@ async def edit_config(config_id: int,
                     (team_name, vm_id, vm_ip, student_emails, config_id)
                 )
                 conn.commit()
+
+                await websocket.send_text("[EDIT] Successfully edit configuration!")
             else:
-                await websocket.send_text("Ansible edit process did not ended successfully.")
+                await websocket.send_text("[EDIT] Error: Ansible edit process did not ended successfully.")
         except Exception as e:
             conn.rollback()
-            await websocket.send_text(f"Edition error: {str(e)}")
+            await websocket.send_text(f"[EDIT] Edition error: {str(e)}")
         finally:
             conn.close()
             
