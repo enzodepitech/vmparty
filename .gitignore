@@ -9,3 +9,6 @@
 
 !/app
 !/ansible
+
+ # Do not force update inventory on git update
+/ansible/inventory.ini

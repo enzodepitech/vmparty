@@ -44,7 +44,7 @@ async def update_guacamole_resources(websocket: WebSocket,
     try:
         guac = Guacamole(GUACAMOLE_URL, username=GUAC_ADMIN_USER, password=GUAC_ADMIN_PASS)
 
-        await websocket.send_text(f"[GUACAMOLE] Successfully connected to Guacamole.")
+        await websocket.send_text(f"[EDIT] [GUACAMOLE] Successfully connected to Guacamole.")
         # -------------------------------------------------------------
         # Rename guacamole connection
         # -------------------------------------------------------------
