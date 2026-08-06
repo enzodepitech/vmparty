@@ -193,6 +193,7 @@ async def run_provision(websocket: WebSocket, vm_id):
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
+    env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
 
     try:
         process = await asyncio.create_subprocess_exec(

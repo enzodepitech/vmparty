@@ -5,6 +5,24 @@
   gather_facts: false
 
   tasks:
+    - name: Check if inventory file exists
+      ansible.builtin.stat:
+        path: ../ansible/inventory.ini
+        register: inventory_file
+
+    - name: Create initial inventory file if missing
+      ansible.builtin.copy:
+        dest: ../ansible/inventory.ini
+        mode: '0644'
+        content: |
+          [student_containers]
+
+          [student_containers:vars]
+          ansible_user=root
+          ansible_ssh_private_key_file=/root/.ssh/id_ed25519
+          ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+      when: not inventory_file.stat.exists
+  
     - name: Add vm to the inventory
       ansible.builtin.lineinfile:
         path: ../ansible/inventory.ini
