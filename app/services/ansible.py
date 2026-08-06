@@ -174,7 +174,7 @@ async def run_provision(websocket: WebSocket, vm_id):
     """
     await websocket.send_text("[PROVISION] Provisionning VM...")
 
-    _, _, _, emails = get_vm(vm_id)
+    _, vm_ip, _, emails = get_vm(vm_id)
     
     student_credentials = []
     for email in emails.split(","):
@@ -187,6 +187,7 @@ async def run_provision(websocket: WebSocket, vm_id):
     # Deploy VMs via Ansible
     extra_vars = {
         "vmid": vm_id,
+        "vm_ip": vm_ip,
         "student_credentials": student_credentials
     }
 
