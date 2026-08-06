@@ -231,6 +231,7 @@ async def delete_config(config_id: int,
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
     except Exception as e:
+        await websocket.send_text(f"[DELETE] Error when delete config {config_id}: {e}")
         logging.info(f"[DELETE] Error when delete config {config_id}: {e}")
     finally:
         try:

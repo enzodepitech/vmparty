@@ -1,19 +1,28 @@
 ---
-- name: Configure Student LXC Environment
-  hosts: "vm_{{ vmid }}"
+- name: Wait for VM Connection
+  hosts: localhost
+  connection: local
   gather_facts: false
+  vars:
+    node_name: "pve"
 
   tasks:
     # -------------------------------------------------------------
     # Wait for connection
     # -------------------------------------------------------------
-    - name: Wait for VM SSH port to close
+    - name: Wait for VM SSH port to open
       ansible.builtin.wait_for:
         host: "{{ vm_ip }}"
         port: 22
         state: started
         timeout: 30
 
+---
+- name: Configure Student LXC Environment
+  hosts: "vm_{{ vmid }}"
+  gather_facts: false
+
+  tasks:
     # -------------------------------------------------------------
     # 1. INSTALL BASE PACKAGES & DEVELOPMENT TOOLS
     # -------------------------------------------------------------
