@@ -8,21 +8,19 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 import logging
 import asyncio
 
-from app.services.guacamole import register_one_guacamole_access, update_guacamole_resources
+import app.services.guacamole as guacamole
 import app.services.ansible as ansible
+import app.database as db
 
-from app.database import init_db, get_db_connection, create_user, delete_user, create_vm, delete_vm
 from app.auth import ADMIN_USERNAME, ADMIN_PASSWORD_HASH, verify_password, create_session_token, require_admin, require_admin_ws
 
-
-# --- Init app
-
-VMS_CONF_FILE = "./vms_conf.yml"
-EXPORT_PATH = "@storage/exports/"
+# ----------------------------------------------------
+# Init application
+# ----------------------------------------------------
 
 app = FastAPI(title="VM Party")
 
-init_db()
+db.init_db()
 
 # Allow https traffic over proxy
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
@@ -39,7 +37,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 @app.get("/")
 async def read_dashboard(request: Request, admin_user: str = Depends(require_admin)):
-    conn = get_db_connection()
+    conn = db.get_db_connection()
     configs = conn.execute("SELECT * FROM configs ORDER BY id DESC").fetchall()
     conn.close()
 
@@ -73,11 +71,11 @@ async def add_config(websocket: WebSocket,
         # Create users in the database
         await websocket.send_text(f"[ADD] Starting registring students...")
         for mail in student_emails.split(","):
-            create_user(mail, create_user_password())
+            db.create_user(mail, create_user_password())
 
         # Create vm config in the database
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
-        create_vm(team_name, vm_id, vm_ip, student_emails)
+        db.create_vm(team_name, vm_id, vm_ip, student_emails)
 
         await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
 
@@ -92,7 +90,7 @@ async def add_config(websocket: WebSocket,
         await websocket.send_text(f"[ADD] Successfully Provision VM.")
 
         # Register vm guacamole access
-        await register_one_guacamole_access(websocket, vm_id)
+        await guacamole.register_one_guacamole_access(websocket, vm_id)
 
         await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
     except WebSocketDisconnect:
@@ -112,7 +110,7 @@ async def add_config(websocket: WebSocket,
 
 @app.get("/edit/{config_id}", response_class=HTMLResponse)
 async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin)):
-    conn = get_db_connection()
+    conn = db.get_db_connection()
     config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
     conn.close()
 
@@ -141,7 +139,7 @@ async def edit_config(config_id: int,
         vm_ip = data.get("vm_ip")
         student_emails = data.get("student_emails")
     
-        conn = get_db_connection()
+        conn = db.get_db_connection()
         old_config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
     
         if not old_config:
@@ -156,9 +154,9 @@ async def edit_config(config_id: int,
 
         # Register new students and delete olds
         for mail in to_add:
-            create_user(mail, create_user_password())
+            db.create_user(mail, create_user_password())
         for mail in to_remove:
-            delete_user(mail)
+            db.delete_user(mail)
 
         try: 
             # Edit server VM name & Update Linux users
@@ -173,10 +171,9 @@ async def edit_config(config_id: int,
             if ansible_success:
                 # Update guacamole access
                 await asyncio.to_thread(
-                    update_guacamole_resources,
+                    guacamole.update_guacamole_resources,
                     websocket,
-                    connection_name=old_config["team_name"],
-                    new_team_name=team_name,
+                    old_team_name=old_config["team_name"],
                     add_emails=to_add,
                     remove_emails=to_remove
                 )
@@ -219,7 +216,7 @@ async def delete_config(config_id: int,
         await ansible.run_delete(websocket, config_id)
 
         # Delete it in the database only if delete on server worked
-        delete_vm(config_id)
+        db.delete_vm(config_id)
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
     except Exception as e:

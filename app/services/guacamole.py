@@ -9,7 +9,7 @@ from guacapy.managers import ConnectionManager
 
 from copy import deepcopy
 
-from app.database import get_user, get_vm
+import app.database as db
 
 GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
 GUAC_ADMIN_USER = os.getenv("GUACAMOLE_API_USER", "")
@@ -35,8 +35,7 @@ USER_PAYLOAD_TEMPLATE = {
 }
 
 async def update_guacamole_resources(websocket: WebSocket,
-                                     connection_name: str,
-                                     new_team_name: str,
+                                     old_team_name: str,
                                      add_emails: list[str],
                                      remove_emails: list[str]
                                      ) -> None:
@@ -49,69 +48,73 @@ async def update_guacamole_resources(websocket: WebSocket,
         # -------------------------------------------------------------
         # Rename guacamole connection
         # -------------------------------------------------------------
-        
-        connection = guac.connections.get_by_name(connection_name)
-        try:
-            connection_id = connection["identifier"]
-        except TypeError as te:
-            logging.info(f"[EDIT] Type Error: {str(te)}")
-            return
-
-        await websocket.send_text(f"[GUACAMOLE] Successfully get connection: {connection}")
-        if connection["name"] != new_team_name:
-            renamed_connection = deepcopy(connection)
-            renamed_connection["name"] = new_team_name
-            try:
-                guac.connections.update(connection_id, renamed_connection)
-            except ValueError:
-                await websocket.send_text(f"[GUACAMOLE] Error when rename connection, invalid payload: {renamed_connection}")
+        # Todo
+        # Change connection team name part for every student of that vm
 
         # -------------------------------------------------------------
         # Remove access to deleted students
         # -------------------------------------------------------------
         for email in remove_emails:
-            if not email:
-                continue
-            try:
-                guac.connections.revoke_connection(
-                    username=email,
-                    connection_id=connection_id,
-                    permission="READ"
-                )
-            except HTTPError as e:
-                if e.response.status_code != 404:
-                    raise e
+            delete_user(guac, email, old_team_name)
 
         # -------------------------------------------------------------
         # Create new student connection and access
         # -------------------------------------------------------------
         for email in add_emails:
-            if not email:
-                continue
-
-            # Create guacamole user if doesn't exist
-            try:
-                guac.users.user_details(email)
-            except HTTPError as e:
-                if e.response.status_code == 404:
-                    new_user = deepcopy(USER_PAYLOAD_TEMPLATE)
-                    new_user["username"] = email
-                    guac.users.create(new_user)
-                else:
-                    raise e
-
-            # Assign connection
-            guac.users.assign_connection(
-                username=email,
-                permission="READ",
-                connection_id=connection_id,
-            )
+            register_new_user(guac, email, old_team_name)
+            
     except HTTPError as http_err:
         status = http_err.response.status_code
         error_msg = http_err.response.text
         raise RuntimeError(f"Guacamole API Error ({status}): {error_msg}") from http_err
     except RequestException as req_err:
         raise RuntimeError(f"Impossible to connect to Guacamole server: {str(req_err)}") from req_err
+
+
+def delete_user(guac: Guacamole, email: str, team_name: str):
+    try:
+        # Get user username
+        _, username, _ = db.get_user(email)
+        # Retrieve connection
+        connection = guac.connections.get_by_name(f"{team_name}:{username}")
+        # Get connection id
+        connection_id = connection["identifier"]
+        
+        guac.connections.revoke_connection(
+            username=email,
+            connection_id=connection_id,
+            permission="READ"
+        )
+    except HTTPError as e:
+        if e.response.status_code != 404:
+            raise e
+    except TypeError as te:
+        logging.info(f"[EDIT] Type Error: {str(te)}")
+        return
+
+def register_new_user(guac: Guacamole, email: str, team_name: str):
+    # Retrieve information
+    _, username, _ = db.get_user(email)
+    connection = guac.connections.get_by_name(f"{team_name}:{username}")
+    connection_id = connection["identifier"]
+            
+    # Create guacamole user if doesn't exist
+    try:
+        guac.users.user_details(email)
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            new_user = deepcopy(USER_PAYLOAD_TEMPLATE)
+            new_user["username"] = email
+            guac.users.create(new_user)
+        else:
+            raise e
+
+    # Assign connection
+    guac.users.assign_connection(
+        username=email,
+        permission="READ",
+        connection_id=connection_id,
+    )
 
 async def register_one_guacamole_access(websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
@@ -123,10 +126,10 @@ async def register_one_guacamole_access(websocket: WebSocket, vm_id):
 
     await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
 
-    _, vm_ip, vm_name, students = get_vm(vm_id)
+    _, vm_ip, vm_name, students = db.get_vm(vm_id)
 
     for student in students.split(","):
-        mail, username, hashed_password = get_user(student)
+        mail, username, hashed_password = db.get_user(student)
         
         connection_name = f"{vm_name}: ({username})"
         connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
