@@ -17,7 +17,6 @@
         state: started
         timeout: 30
 
----
 - name: Configure Student LXC Environment
   hosts: "vm_{{ vmid }}"
   gather_facts: false
