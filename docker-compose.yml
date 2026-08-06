@@ -11,4 +11,5 @@ services:
       - "8000:8000"
     volumes:
       - ./storage:/app/storage
+      - ./ansible:/app/ansible
     restart: unless-stopped
