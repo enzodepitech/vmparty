@@ -67,11 +67,14 @@ async def add_config(websocket: WebSocket,
         vm_id = data.get("vm_id")
         vm_ip = data.get("vm_ip")
         student_emails = data.get("student_emails")
+        has_single_user = data.get("single_user")
 
         # Create users in the database
-        await websocket.send_text(f"[ADD] Starting registring students...")
-        for mail in student_emails.split(","):
-            db.create_user(mail, create_user_password())
+        # await websocket.send_text(f"[ADD] Starting registring students...")
+        # if has_single_user:
+            # db.create_user("student", create_user_password())
+        # for mail in student_emails.split(","):
+            # db.create_user(mail, create_user_password())
 
         # Create vm config in the database
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
@@ -90,7 +93,11 @@ async def add_config(websocket: WebSocket,
         await websocket.send_text(f"[ADD] Successfully Provision VM.")
 
         # Register vm guacamole access
-        await guacamole.register_one_guacamole_access(websocket, vm_id)
+        if has_single_user:
+            await guacamole.register_guacamole_access_single_user(websocket, vm_id)
+        else:
+            # await guacamole.register_one_guacamole_access(websocket, vm_id)
+            pass
 
         await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
     except WebSocketDisconnect:
@@ -159,11 +166,13 @@ async def edit_config(config_id: int,
         # Register new students and delete olds
         await websocket.send_text("[EDIT] Creating students to add in DataBase...")
         for mail in to_add:
-            db.create_user(mail, create_user_password())
+            # db.create_user(mail, create_user_password())
+            pass
 
         await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
         for mail in to_remove:
-            db.delete_user(mail)
+            # db.delete_user(mail)
+            pass
 
         try: 
             # Edit server VM name & Update Linux users
