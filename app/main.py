@@ -100,7 +100,7 @@ async def add_config(websocket: WebSocket,
         if has_single_user:
             await guacamole.register_guacamole_access_single_user(websocket, vm_id)
         else:
-            # await guacamole.register_one_guacamole_access(websocket, vm_id)
+            # await guacamole.register_guacamole_access(websocket, vm_id)
             pass
 
         await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")

@@ -2,8 +2,7 @@ import os
 import logging
 from requests.exceptions import HTTPError, RequestException
 
-from app.core.security import create_user_password
-from app.core.utils import sanitize_email_to_username, slugify
+from app.core.utils import slugify
 from fastapi import WebSocket
 
 from guacapy import Guacamole
@@ -63,7 +62,7 @@ async def update_guacamole_resources(websocket: WebSocket,
         # Create new student connection and access
         # -------------------------------------------------------------
         for email in add_emails:
-            register_new_user(guac, email, old_team_name)
+            register_new_user(guac, email, old_team_name, False)
             
     except HTTPError as http_err:
         status = http_err.response.status_code
@@ -94,10 +93,13 @@ def delete_user(guac: Guacamole, email: str, team_name: str):
         logging.info(f"[EDIT] Type Error: {str(te)}")
         return
 
-def register_new_user(guac: Guacamole, email: str, team_name: str):
+def register_new_user(guac: Guacamole, email: str, team_name: str, single_user: bool):
     # Retrieve information
-    _, username, _ = db.get_user(email)
-    connection = guac.connections.get_by_name(f"{team_name}:{username}")
+    if single_user:
+        connection = guac.connections.get_by_name(f"{team_name}")
+    else:
+        _, username, _ = db.get_user(email)
+        connection = guac.connections.get_by_name(f"{team_name}:{username}")
     connection_id = connection["identifier"]
             
     # Create guacamole user if doesn't exist
@@ -117,7 +119,7 @@ def register_new_user(guac: Guacamole, email: str, team_name: str):
         permission="READ",
         connection_id=connection_id,
     )
-
+    
 async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
@@ -154,9 +156,9 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
         raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
 
     for student in students.split(","):
-        register_new_user(guac, student, vm_name)
+        register_new_user(guac, student, vm_name, True)
     
-async def register_one_guacamole_access(websocket: WebSocket, vm_id):
+async def register_guacamole_access(websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
         hostname=GUACAMOLE_URL,
