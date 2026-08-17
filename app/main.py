@@ -70,7 +70,7 @@ async def add_config(websocket: WebSocket,
         student_emails = data.get("student_emails")
         has_single_user = data.get("single_user")
 
-        logging.info(has_single_user)
+        logging.info(f"Single User: {has_single_user}")
 
         # Create users in the database
         await websocket.send_text(f"[ADD] Starting registring students...")
