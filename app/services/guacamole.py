@@ -154,8 +154,7 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
         raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
 
     for student in students.split(","):
-        mail, _, _ =  db.get_user(student)
-        register_new_user(guac, mail, vm_name)
+        register_new_user(guac, student, vm_name)
     
 async def register_one_guacamole_access(websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
