@@ -37,6 +37,7 @@ function startProvide(event) {
         vm_id: parseInt(formData.get("vm_id")),
         vm_ip: formData.get("vm_ip"),
         student_emails: formData.get("student_emails")
+        single_user: formData.get("single_user") === "true" ? true : false
     };
     
     startWebSocketProcess("/ws/add", payload);
