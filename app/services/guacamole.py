@@ -93,14 +93,15 @@ def delete_user(guac: Guacamole, email: str, team_name: str):
         logging.info(f"[EDIT] Type Error: {str(te)}")
         return
 
-def register_new_user(guac: Guacamole, email: str, team_name: str, single_user: bool):
+def register_new_user(guac: Guacamole, email: str, team_name: str, single_user: bool, connection_id = None):
     # Retrieve information
-    if single_user:
-        connection = guac.connections.get_by_name(f"{team_name}")
-    else:
-        _, username, _ = db.get_user(email)
-        connection = guac.connections.get_by_name(f"{team_name}:{username}")
-    connection_id = connection["identifier"]
+    if connection_id == None:
+        if single_user:
+            connection = guac.connections.get_by_name(f"{team_name}")
+        else:
+            _, username, _ = db.get_user(email)
+            connection = guac.connections.get_by_name(f"{team_name}:{username}")
+        connection_id = connection["identifier"]
             
     # Create guacamole user if doesn't exist
     try:
@@ -156,7 +157,9 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
         raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
 
     for student in students.split(","):
-        register_new_user(guac, student, vm_name, True)
+        register_new_user(guac, student, vm_name, True, conn_id)
+        
+    await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
     
 async def register_guacamole_access(websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
