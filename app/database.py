@@ -21,7 +21,8 @@ def create_vm_table(cursor):
                 team_name TEXT NOT NULL,
                 vm_id INTEGER NOT NULL UNIQUE,
                 vm_ip TEXT NOT NULL,
-                student_emails TEXT NOT NULL
+                student_emails TEXT NOT NULL,
+                single_user INTEGER NOT NULL
             )
         """)
 
@@ -104,13 +105,13 @@ def delete_vm(config_id):
         if conn:
             conn.close()
 
-def create_vm(vm_name, vm_id, vm_ip, student_emails):
+def create_vm(vm_name, vm_id, vm_ip, student_emails, has_single_user):
     conn = None
     try:
         conn = get_db_connection()
         conn.execute(
-            "INSERT INTO configs (team_name, vm_id, vm_ip, student_emails) VALUES (?, ?, ?, ?)",
-            (vm_name, vm_id, vm_ip, student_emails)
+            "INSERT INTO configs (team_name, vm_id, vm_ip, student_emails, single_user) VALUES (?, ?, ?, ?)",
+            (vm_name, vm_id, vm_ip, student_emails, has_single_user)
         )
         conn.commit()
     except sqlite3.IntegrityError:

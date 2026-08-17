@@ -1,4 +1,5 @@
 from app.core.security import create_user_password
+from app.core.utils import slugify
 from fastapi import FastAPI, Request, Form, HTTPException,  WebSocket, WebSocketDisconnect, Depends, status
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -69,16 +70,19 @@ async def add_config(websocket: WebSocket,
         student_emails = data.get("student_emails")
         has_single_user = data.get("single_user")
 
+        logging.info(has_single_user)
+
         # Create users in the database
-        # await websocket.send_text(f"[ADD] Starting registring students...")
-        # if has_single_user:
-            # db.create_user("student", create_user_password())
-        # for mail in student_emails.split(","):
-            # db.create_user(mail, create_user_password())
+        await websocket.send_text(f"[ADD] Starting registring students...")
+        if has_single_user:
+            db.create_user(slugify(team_name), create_user_password())
+        else:
+            for mail in student_emails.split(","):
+                db.create_user(mail, create_user_password())
 
         # Create vm config in the database
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
-        db.create_vm(team_name, vm_id, vm_ip, student_emails)
+        db.create_vm(team_name, vm_id, vm_ip, student_emails, has_single_user)
 
         await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
 
@@ -88,7 +92,7 @@ async def add_config(websocket: WebSocket,
         await websocket.send_text(f"[ADD] Successfully Provide VM.")
 
         # Run provisioner playbook
-        await ansible.run_provision(websocket, vm_id)
+        await ansible.run_provision(websocket, vm_id, has_single_user)
 
         await websocket.send_text(f"[ADD] Successfully Provision VM.")
 
@@ -166,8 +170,7 @@ async def edit_config(config_id: int,
         # Register new students and delete olds
         await websocket.send_text("[EDIT] Creating students to add in DataBase...")
         for mail in to_add:
-            # db.create_user(mail, create_user_password())
-            pass
+            db.create_user(mail, create_user_password())
 
         await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
         for mail in to_remove:

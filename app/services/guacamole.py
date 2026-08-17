@@ -3,7 +3,7 @@ import logging
 from requests.exceptions import HTTPError, RequestException
 
 from app.core.security import create_user_password
-from app.core.utils import sanitize_email_to_username
+from app.core.utils import sanitize_email_to_username, slugify
 from fastapi import WebSocket
 
 from guacapy import Guacamole
@@ -17,10 +17,9 @@ GUACAMOLE_URL = os.getenv("GUACAMOLE_URL", "")
 GUAC_ADMIN_USER = os.getenv("GUACAMOLE_API_USER", "")
 GUAC_ADMIN_PASS = os.getenv("GUACAMOLE_API_PASSWORD", "")
 DATABASE_SOURCE = "postgresql"
-DEFAULT_USERNAME = "student"
 
 USER_PAYLOAD_TEMPLATE = {
-    "username": DEFAULT_USERNAME,
+    "username": "",
     "password": "",
     "attributes": {
         "disabled": "",
@@ -77,8 +76,7 @@ async def update_guacamole_resources(websocket: WebSocket,
 def delete_user(guac: Guacamole, email: str, team_name: str):
     try:
         # Get user username
-        # _, username, _ = db.get_user(email)
-        username = sanitize_email_to_username(email)
+        _, username, _ = db.get_user(email)
         # Retrieve connection
         connection = guac.connections.get_by_name(f"{team_name}:{username}")
         # Get connection id
@@ -98,8 +96,7 @@ def delete_user(guac: Guacamole, email: str, team_name: str):
 
 def register_new_user(guac: Guacamole, email: str, team_name: str):
     # Retrieve information
-    username = sanitize_email_to_username(email)
-    # _, username, _ = db.get_user(email)
+    _, username, _ = db.get_user(email)
     connection = guac.connections.get_by_name(f"{team_name}:{username}")
     connection_id = connection["identifier"]
             
@@ -133,14 +130,14 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
 
     _, vm_ip, vm_name, students = db.get_vm(vm_id)
 
-    # mail, username, hashed_password = db.get_user(student)
-    hashed_password = create_user_password()
+    mail, username, hashed_password = db.get_user(slugify(vm_name))
         
     connection_name = f"{vm_name}"
     connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
     connection_payload.update({
         "name": connection_name,
         "parameters": {
+            "username": username,
             "hostname": vm_ip,
             "password": hashed_password
         }
@@ -157,8 +154,7 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
         raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
 
     for student in students.split(","):
-        # mail, _, _ =  db.get_user(student)
-        mail = student
+        mail, _, _ =  db.get_user(student)
         register_new_user(guac, mail, vm_name)
     
 async def register_one_guacamole_access(websocket: WebSocket, vm_id):
@@ -174,10 +170,7 @@ async def register_one_guacamole_access(websocket: WebSocket, vm_id):
     _, vm_ip, vm_name, students = db.get_vm(vm_id)
 
     for student in students.split(","):
-        # mail, username, hashed_password = db.get_user(student)
-        mail = student
-        username = sanitize_email_to_username(student)
-        hashed_password = create_user_password()
+        mail, username, hashed_password = db.get_user(student)
         
         connection_name = f"{vm_name}: ({username})"
         connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)

@@ -5,10 +5,11 @@ import logging
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from app.database import get_user, get_vm, get_vm_byid
+from app.core.utils import sanitize_email_to_username, DEFAULT_USERNAME, slugify
+import app.database as db
 
 async def run_delete(websocket: WebSocket, id):
-    vm_id, vm_ip, vm_name, _ = get_vm_byid(id)
+    vm_id, vm_ip, vm_name, _ = db.get_vm_byid(id)
     
     # Deploy VMs via Ansible
     extra_vars = {
@@ -64,7 +65,7 @@ async def run_edit(
     # Configure ansible variables
     students_to_add_config = []
     for student_mail in students_to_add:
-        _, username, password = get_user(student_mail)
+        _, username, password = db.get_user(student_mail)
         students_to_add_config.append({
             "username": username,
             "password": password
@@ -72,7 +73,7 @@ async def run_edit(
 
     students_to_remove_config = []
     for student_mail in students_to_remove:
-        _, username, hashed_password = get_user(student_mail)
+        _, username, hashed_password = db.get_user(student_mail)
         students_to_remove_config.append({
             "username": username
         })
@@ -126,7 +127,7 @@ async def run_edit(
         return False
 
 async def run_provide(websocket: WebSocket, vm_id: int):
-    _, vm_ip, vm_name, emails = get_vm(vm_id)
+    _, vm_ip, vm_name, emails = db.get_vm(vm_id)
     
     # Deploy VMs via Ansible
     extra_vars = {
@@ -169,20 +170,28 @@ async def run_provide(websocket: WebSocket, vm_id: int):
     except Exception as e:
         await websocket.send_text(f"[PROVIDE] Error executing playbook: {str(e)}")
 
-async def run_provision(websocket: WebSocket, vm_id):
+async def run_provision(websocket: WebSocket, vm_id: int, single_user: bool):
     """
     """
     await websocket.send_text("[PROVISION] Provisionning VM...")
 
-    _, vm_ip, _, emails = get_vm(vm_id)
-    
+    _, vm_ip, vm_name, emails = db.get_vm(vm_id)
+
     student_credentials = []
-    for email in emails.split(","):
-        _, username, password = get_user(email)
+
+    if single_user:
+        _, username, password = db.get_user(slugify(vm_name))
         student_credentials.append({
             "username": username,
             "password": password
         })
+    else:
+        for email in emails.split(","):
+            _, username, password = db.get_user(email)
+            student_credentials.append({
+                "username": username,
+                "password": password
+            })
     
     # Deploy VMs via Ansible
     extra_vars = {
