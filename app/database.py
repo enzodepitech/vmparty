@@ -110,8 +110,8 @@ def create_vm(vm_name, vm_id, vm_ip, student_emails, has_single_user):
     try:
         conn = get_db_connection()
         conn.execute(
-            "INSERT INTO configs (team_name, vm_id, vm_ip, student_emails, single_user) VALUES (?, ?, ?, ?)",
-            (vm_name, vm_id, vm_ip, student_emails, has_single_user)
+            "INSERT INTO configs (team_name, vm_id, vm_ip, student_emails) VALUES (?, ?, ?, ?)",
+            (vm_name, vm_id, vm_ip, student_emails)
         )
         conn.commit()
     except sqlite3.IntegrityError:
