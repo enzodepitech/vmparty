@@ -143,7 +143,7 @@ async def run_provide(websocket: WebSocket, vm_id: int):
     try:
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
-            "ansible/01_provider.yml",
+            "ansible/01_provider_vm.yml",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,

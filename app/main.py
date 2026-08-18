@@ -64,7 +64,7 @@ async def add_config(websocket: WebSocket,
         # Fetch data
         data = await websocket.receive_json()
         
-        team_name = data.get("team_name")
+        team_name = slugify(data.get("team_name"))
         vm_id = data.get("vm_id")
         vm_ip = data.get("vm_ip")
         student_emails = data.get("student_emails")
