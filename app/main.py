@@ -75,8 +75,10 @@ async def add_config(websocket: WebSocket,
         # Create users in the database
         await websocket.send_text(f"[ADD] Starting registring students...")
         if has_single_user:
+            await websocket.send_text(f"[ADD] Add single user...")
             db.create_user(team_name, create_user_password())
         else:
+            await websocket.send_text(f"[ADD] Add students user...")
             for mail in student_emails.split(","):
                 db.create_user(mail, create_user_password())
 
