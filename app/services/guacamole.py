@@ -133,7 +133,7 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
 
     _, vm_ip, vm_name, students = db.get_vm(vm_id)
 
-    mail, username, hashed_password = db.get_user(slugify(vm_name))
+    mail, username, hashed_password = db.get_user(vm_name)
         
     connection_name = f"{vm_name}"
     connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
