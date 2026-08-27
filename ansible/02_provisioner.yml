@@ -15,7 +15,7 @@
         host: "{{ vm_ip }}"
         port: 22
         state: started
-        timeout: 30
+        timeout: 600
 
 - name: Configure Student LXC Environment
   hosts: "vm_{{ vmid }}"
