@@ -105,6 +105,21 @@ def delete_vm(config_id):
         if conn:
             conn.close()
 
+def update_connection_id_vm(vm_id, conn_id):
+    conn = None
+    try:
+        conn = get_db_connection()
+        # todo: update
+        # conn.execute()
+        conn.commit()
+    except sqlite3.IntegrityError:
+        logging.error("VM ID must be unique.")
+        raise ValueError("Cannot add VM: VM ID must be unique")
+    finally:
+        if conn:
+            conn.close()
+    
+            
 def create_vm(vm_name, vm_id, vm_ip, student_emails, has_single_user):
     conn = None
     try:
