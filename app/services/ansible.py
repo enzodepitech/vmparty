@@ -24,6 +24,7 @@ async def run_delete(websocket: WebSocket, id):
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
             "ansible/04_delete.yml",
+            "-vvv",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -96,6 +97,7 @@ async def run_edit(
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 
             "ansible/03_edit.yml",
+            "-vvv",
             "-i", "ansible/inventory.ini",
             "-e", json.dumps(extra_vars),
             "-l", f"vm_{vmid}",
@@ -150,6 +152,7 @@ async def run_provide(websocket: WebSocket, vm_id: int, ansible_playbook_path: s
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
             ansible_playbook_path,
+            "-vvv",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
