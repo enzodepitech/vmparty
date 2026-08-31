@@ -40,3 +40,9 @@
         state: absent
         force: true
         destroy_unreferenced_disks: true
+
+    - name: Delete VM from the inventory file
+      ansible.builtin.lineinfile:
+        path: ../ansible/inventory.ini
+        state: absent
+        regexp: '^vm_{{ vmid }}\s'
