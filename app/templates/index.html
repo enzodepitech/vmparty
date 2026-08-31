@@ -36,6 +36,10 @@
                   <input type="checkbox" id="single_user" name="single_user" checked />
                   <label for="single_user">Single User</label>
                 </div>
+                <div>
+                  <input type="checkbox" id="is_container" name="is_container" checked />
+                  <label for="is_container">Container</label>
+                </div>
                 <button type="submit" id="add-config-btn" aria-label="Add new configuration"
                         title="Add new configuration"
                         class="flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition">
@@ -61,7 +65,7 @@
                         <th class="p-4 text-center">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="config-table-body">
                     {% for config in configs %}
                     <tr class="border-b hover:bg-gray-50">
                             <td class="p-4">

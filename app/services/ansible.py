@@ -126,7 +126,13 @@ async def run_edit(
         await websocket.send_text(f"[EDIT] Critical Error: {str(e)}")
         return False
 
-async def run_provide(websocket: WebSocket, vm_id: int):
+async def run_provide_container(websocket: WebSocket, vm_id):
+    await run_provide(websocket, vm_id, "ansible/01_provider.yml")
+
+async def run_provide_vm(websocket: WebSocket, vm_id):
+    await run_provide(websocket, vm_id, "ansible/01_provider_vm.yml")
+    
+async def run_provide(websocket: WebSocket, vm_id: int, ansible_playbook_path: str):
     _, vm_ip, vm_name, emails = db.get_vm(vm_id)
     
     # Deploy VMs via Ansible
@@ -143,7 +149,7 @@ async def run_provide(websocket: WebSocket, vm_id: int):
     try:
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
-            "ansible/01_provider.yml",
+            ansible_playbook_path,
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,

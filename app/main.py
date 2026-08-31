@@ -64,17 +64,16 @@ async def add_config(websocket: WebSocket,
         # Fetch data
         data = await websocket.receive_json()
         
-        team_name = slugify(data.get("team_name"))
-        vm_id = data.get("vm_id")
-        vm_ip = data.get("vm_ip")
-        student_emails = data.get("student_emails")
-        has_single_user = data.get("single_user")
-
-        logging.info(f"Single User: {has_single_user}")
+        team_name = slugify(data.get("team_name")) # VM Name
+        vm_id = data.get("vm_id") # VM Identifier
+        vm_ip = data.get("vm_ip") # VM IP Adress
+        student_emails = data.get("student_emails") # String of student mails, separated by ','
+        has_shared_user = data.get("has_shared_user") # Tell if the vm has a shared user
+        is_container = data.get("is_container") # Tell if the vm is a container
 
         # Create users in the database
         await websocket.send_text(f"[ADD] Starting registring students...")
-        if has_single_user:
+        if has_shared_user:
             await websocket.send_text(f"[ADD] Add single user...")
             db.create_user(team_name, create_user_password())
         else:
@@ -84,22 +83,25 @@ async def add_config(websocket: WebSocket,
 
         # Create vm config in the database
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
-        db.create_vm(team_name, vm_id, vm_ip, student_emails, has_single_user)
+        db.create_vm(team_name, vm_id, vm_ip, student_emails, has_shared_user)
 
         await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
 
         # Run provider playbook
-        await ansible.run_provide(websocket, vm_id)
+        if is_container:
+            await ansible.run_provide_container(websocket, vm_id)
+        else:
+            await ansible.run_provide_vm(websocket, vm_id)
 
         await websocket.send_text(f"[ADD] Successfully Provide VM.")
 
         # Run provisioner playbook
-        await ansible.run_provision(websocket, vm_id, has_single_user)
+        await ansible.run_provision(websocket, vm_id, has_shared_user)
 
         await websocket.send_text(f"[ADD] Successfully Provision VM.")
 
         # Register vm guacamole access
-        if has_single_user:
+        if has_shared_user:
             await guacamole.register_guacamole_access_single_user(websocket, vm_id)
         else:
             # await guacamole.register_guacamole_access(websocket, vm_id)

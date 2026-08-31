@@ -38,9 +38,14 @@ function startProvide(event) {
         vm_ip: formData.get("vm_ip"),
         student_emails: formData.get("student_emails"),
         single_user: formData.has("single_user")
+        is_container: formData.has("is_container")
     };
     
     startWebSocketProcess("/ws/add", payload);
+
+    try {
+        const response = await 
+    }
 }
 
 // -----------------------------------------------------
@@ -104,6 +109,19 @@ function startWebSocketProcess(url, params = {}) {
         statusBadge.textContent = "Finished";
         statusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
         appendLogLine("[System] Connection closed.", "text-slate-500");
+
+        // Reload configurations
+        const response = await fetch(window.location.href);
+        const html = await response.text();
+        
+        // Parse the HTML and extract the updated table body
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newTableBody = doc.getElementById('config-table-body').innerHTML;
+        
+        // Swap out the old rows instantly without breaking the WS connection
+        document.getElementById('config-table-body').innerHTML = newTableBody;
+        
         processRunning = false;
     };
 }
