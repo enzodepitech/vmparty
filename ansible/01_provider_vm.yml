@@ -72,6 +72,7 @@
         vmid: "{{ vmid }}"
         validate_certs: false
         state: started
+        api_timeout: 500
         timeout: 500
 
 
