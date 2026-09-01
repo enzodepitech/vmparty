@@ -32,35 +32,29 @@
         line: 'vm_{{ vmid }} ansible_host={{ ip }} vmid={{ vmid }}'
         insertafter: '^\[student_containers\]'
 
-    - name: Clone Cloud-Init Template to VM {{ vmid }}
+    - name: Clone VM {{ vmid }}
       community.proxmox.proxmox_kvm:
         api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
         api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
+        api_timeout: 500
+        timeout: 500
+        node: "pve"
+        vmid: 9000
         newid: "{{ vmid }}"
         name: "{{ vm_name }}"
-        node: "pve"
-        validate_certs: false
-        
-        # Clone from your Proxmox Template ID
-        clone: debian-13-cloudinit-template
-        vmid: 9000
+        clone: "debian-13-template"
         full: true
-        
-        # Hardware spec overrides
+        format: "qcow2"
+        storage: "local-lvm"
         cores: 2
         memory: 2048
-        
-        # Cloud-Init configuration
-        ide:
-          ide2: 'local:cloudinit,format=qcow2'
+        ciuser: "debian"
         ipconfig:
           ipconfig0: "ip={{ ip }}/24,gw=192.168.10.1"
         sshkeys: "{{ lookup('file', '/root/.ssh/id_ed25519.pub') | trim }}"
-
-        api_timeout: 500
-        timeout: 500
+        validate_certs: false
         state: present
 
     - name: Start VM {{ vmid }}
