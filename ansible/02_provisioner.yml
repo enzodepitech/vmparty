@@ -17,9 +17,10 @@
         state: started
         timeout: 600
 
-- name: Configure Student LXC Environment
+- name: Configure VM Environment
   hosts: "vm_{{ vmid }}"
-  gather_facts: false
+  gather_facts: true
+  become: true
 
   tasks:
     # -------------------------------------------------------------
@@ -62,7 +63,7 @@
     - name: Create student user accounts and add to sudo + groupwork
       ansible.builtin.user:
         name: "{{ item.username }}"
-        password: "{{ item.password | ansible.builtin.password_hash('sha512') }}"
+        password: "{{ item.password | password_hash('sha512') }}"
         groups: 
           - groupwork
           - sudo
