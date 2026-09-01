@@ -38,8 +38,8 @@
         api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
         api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
         api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
-        api_timeout: 500
-        timeout: 500
+        api_timeout: 300
+        timeout: 300
         node: "pve"
         newid: "{{ vmid }}"
         name: "{{ vm_name }}"
@@ -49,12 +49,47 @@
         storage: "local-lvm"
         cores: 2
         memory: 2048
-        ciuser: "debian"
+        validate_certs: false
+        net:
+          net0: "virtio,bridge=vmbr0"
+        state: present
+      register: present_state
+
+    - name: Wait for deployment
+      ansible.builtin.wait_for:
+        timeout: 15
+      when: present_state.changed
+
+    - name: Setup Cloud-Init for VM {{ vmid }}
+      community.proxmox.proxmox_kvm:
+        api_host: "{{ lookup('env', 'PROXMOX_API_URL') }}"
+        api_user: "{{ lookup('env', 'PROXMOX_API_USER') }}"
+        api_token_id: "{{ lookup('env', 'PROXMOX_API_TOKEN_ID') }}"
+        api_token_secret: "{{ lookup('env', 'PROXMOX_API_TOKEN_SECRET') }}"
+        api_timeout: 120
+        timeout: 120
+
+        validate_certs: false  
+    
+        node: pve
+        name: "{{ vm_name }}"
+    
+        ciuser: ansible
+        cipassword: ansible
         ipconfig:
           ipconfig0: "ip={{ ip }}/24,gw=192.168.10.1"
         sshkeys: "{{ lookup('file', '/root/.ssh/id_ed25519.pub') | trim }}"
-        validate_certs: false
-        state: present
+        nameservers:
+          - '1.1.1.1'
+          - '8.8.8.8'
+
+        update: true
+      register: update_state
+
+    - name: Wait for update
+      ansible.builtin.wait_for:
+        timeout: 15
+      when: update_state.changed
 
     - name: Start VM {{ vmid }}
       community.proxmox.proxmox_kvm:
@@ -67,6 +102,10 @@
         state: started
         api_timeout: 500
         timeout: 500
+      register: started_state
 
-
+    - name: Wait for start
+      ansible.builtin.wait_for:
+        timeout: 15
+      when: started_state.changed
 
