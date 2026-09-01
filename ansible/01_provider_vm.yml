@@ -41,7 +41,6 @@
         api_timeout: 500
         timeout: 500
         node: "pve"
-        vmid: 9000
         newid: "{{ vmid }}"
         name: "{{ vm_name }}"
         clone: "debian-13-template"
