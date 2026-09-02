@@ -1,0 +1,103 @@
+---
+- name: Wait for VM Connection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    node_name: "pve"
+
+  tasks:
+    - name: Wait for VM SSH port to open
+      ansible.builtin.wait_for:
+        host: "{{ vm_ip }}"
+        port: 22
+        state: started
+        timeout: 600
+
+- name: Configure VM Environment
+  hosts: "vm_{{ vmid }}"
+  gather_facts: true
+  become: true
+
+  tasks:
+    # -------------------------------------------------------------
+    # 1. INSTALL BASE PACKAGES & DEVELOPMENT TOOLS
+    # -------------------------------------------------------------
+    - name: Update apt cache and install base student tooling
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - sudo
+          - ca-certificates
+          - curl
+          - git
+          - nano
+          - openssh-server
+          - wget
+          - tree
+          - htop
+        state: present
+
+    # -------------------------------------------------------------
+    # 2. CONFIGURE GROUP WORKSPACE & PERMISSIONS
+    # -------------------------------------------------------------
+    - name: Ensure common group exists for group work
+      ansible.builtin.group:
+        name: groupwork
+        state: present
+
+    - name: Create shared /workspace directory with SETGID
+      ansible.builtin.file:
+        path: /workspace
+        state: directory
+        owner: root
+        group: groupwork
+        mode: '2775' # SETGID bit (2) forces all new files to inherit group ownership
+
+    # -------------------------------------------------------------
+    # 3. CREATE STUDENT ACCOUNTS & GRANT SUDO ACCESS
+    # -------------------------------------------------------------
+    - name: Create student user accounts and add to sudo + groupwork
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        groups: 
+          - groupwork
+          - sudo
+        append: true
+        shell: /bin/bash
+        create_home: true
+        state: present
+      loop: "{{ student_credentials }}"
+
+    - name: Allow passwordless sudo for student accounts (Optional but recommended)
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/students
+        line: "%sudo ALL=(ALL:ALL) NOPASSWD: ALL"
+        create: true
+        mode: '0440'
+
+    # -------------------------------------------------------------
+    # 4. ENVIRONMENT & PERMISSION HARDENING
+    # -------------------------------------------------------------
+    - name: Restrict individual home directories to owner only
+      ansible.builtin.file:
+        path: "/home/{{ item.username }}"
+        mode: '0700'
+      loop: "{{ student_credentials }}"
+
+    # -------------------------------------------------------------
+    # 5. ADMINISTRATION ACCESS & CLEANUP
+    # -------------------------------------------------------------
+    - name: Ensure control node SSH key is authorized for root
+      ansible.posix.authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', '/root/.ssh/id_ed25519.pub') }}"
+
+    - name: Remove default cloud-init user
+      ansible.builtin.user:
+        name: "{{ ci_user }}"
+        state: absent
+        remove: true
+        force: true
