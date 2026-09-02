@@ -43,10 +43,12 @@ templates = Jinja2Templates(directory="app/templates")
 async def read_dashboard(
     request: Request, 
     admin_user: str = Depends(require_admin),
-    db: Session = Depends(db.get_db)  # Inject the database session here
+    db_session: Session = Depends(db.get_db)  # Inject the database session here
 ):
     stmt = select(db.VMConfig).order_by(db.VMConfig.id.desc())
-    configs = db.scalars(stmt).all()
+    configs = db_session.scalars(stmt).all()
+
+    logging.debug(configs)
 
     return templates.TemplateResponse(
         request=request,
@@ -90,20 +92,20 @@ async def add_config(websocket: WebSocket,
 
         # Run provider playbook
         if is_container:
-            await ansible.run_provide_container(websocket, vm_id)
+            await ansible.run_provide_container(db_session, websocket, vm_id)
         else:
-            await ansible.run_provide_vm(websocket, vm_id)
+            await ansible.run_provide_vm(db_session, websocket, vm_id)
 
         await websocket.send_text(f"[ADD] Successfully Provide VM.")
 
         # Run provisioner playbook
-        await ansible.run_provision(websocket, vm_id, has_shared_user)
+        await ansible.run_provision(db_session, websocket, vm_id, has_shared_user)
 
         await websocket.send_text(f"[ADD] Successfully Provision VM.")
 
         # Register vm guacamole access
         if has_shared_user:
-            await guacamole.register_guacamole_access_single_user(websocket, vm_id)
+            await guacamole.register_guacamole_access_single_user(db_session, websocket, vm_id)
         else:
             # await guacamole.register_guacamole_access(websocket, vm_id)
             pass
@@ -152,8 +154,8 @@ async def edit_config(config_id: int,
 
         # Get students to add and students to remove
         await websocket.send_text("[EDIT] Processing students to add and remove configuration...")
-        old_list = set(filter(None, [s.strip() for s in old_config["student_emails"].split(",")]))
-        new_list = set(filter(None, [s.strip() for s in student_emails.split(",")]))
+        old_list = set(filter(None, [s.strip() for s in list(old_config.users)]))
+        new_list = set(filter(None, [s.strip() for s in list(old_config.users)]))
         
         to_add = list(new_list - old_list) # Students to add
         to_remove = list(old_list - new_list) # Students to remove
@@ -173,6 +175,7 @@ async def edit_config(config_id: int,
             # Edit server VM name & Update Linux users
             await websocket.send_text("[EDIT] Ansible updating VM on server...")
             ansible_success = await ansible.run_edit(
+                db_session,
                 websocket,
                 vmid=vm_id,
                 new_team_name=team_name,
@@ -184,8 +187,9 @@ async def edit_config(config_id: int,
                 # Update guacamole access
                 await websocket.send_text("[EDIT] Updating Guacamole Resources...")
                 await guacamole.update_guacamole_resources(
+                    db_session,
                     websocket,
-                    old_team_name=old_config["team_name"],
+                    old_config.guac_conn_id,
                     add_emails=to_add,
                     remove_emails=to_remove
                 )
@@ -221,7 +225,7 @@ async def delete_config(config_id: int,
 
     try:
         # Delete in Proxmox
-        await ansible.run_delete(websocket, config_id)
+        await ansible.run_delete(db_session, websocket, config_id)
 
         # Delete it in the database only if delete on server worked
         db.delete_vm(db_session, config_id)

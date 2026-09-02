@@ -37,15 +37,11 @@ function startProvide(event) {
         vm_id: parseInt(formData.get("vm_id")),
         vm_ip: formData.get("vm_ip"),
         student_emails: formData.get("student_emails"),
-        single_user: formData.has("single_user")
+        has_shared_user: formData.has("shared_user"),
         is_container: formData.has("is_container")
     };
     
     startWebSocketProcess("/ws/add", payload);
-
-    try {
-        const response = await 
-    }
 }
 
 // -----------------------------------------------------
@@ -111,8 +107,8 @@ function startWebSocketProcess(url, params = {}) {
         appendLogLine("[System] Connection closed.", "text-slate-500");
 
         // Reload configurations
-        const response = await fetch(window.location.href);
-        const html = await response.text();
+        const response = fetch(window.location.href);
+        const html = response.text();
         
         // Parse the HTML and extract the updated table body
         const parser = new DOMParser();

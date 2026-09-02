@@ -27,7 +27,7 @@ user_vm_association = Table(
     "user_vm_association",
     Base.metadata,
     Column("user_id", ForeignKey("vm_users.id", ondelete="CASCADE"), primary_key=True),
-    Column("vm_id", ForeignKey("configs.id", ondelete="CASCADE"), primary_key=True),
+    Column("vm_id", ForeignKey("vm_configs.id", ondelete="CASCADE"), primary_key=True),
 )
 
 # ---------------------------------------------------------
@@ -87,7 +87,11 @@ def get_vm_byid(db_session: Session, config_id: int) -> VMConfig | None:
     return db_session.scalar(select(VMConfig).where(VMConfig.id == config_id))
 
 def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
-    for email in student_emails.strip(','):
+    db_session.add(vm_config)
+
+    unique_emails = set(student_emails.split(','))
+    
+    for email in unique_emails:
         # Check if user exists
         user = db_session.scalar(select(VMUser).where(VMUser.mail == email))
 
@@ -100,11 +104,9 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
         # Add user to the vm config
         vm_config.users.append(user)
 
-    db_session.add(vm_config)
-    
     try:
         db_session.commit()
-        logging.info(f"VM '{vm_config.vm_name}' successfully created.")
+        logging.info(f"VM '{vm_config.name}' successfully created.")
     except IntegrityError:
         db_session.rollback()
         logging.error("VM ID must be unique.")

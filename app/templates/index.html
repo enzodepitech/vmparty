@@ -33,8 +33,8 @@
                     <input type="hidden" id="students-hidden-input" name="student_emails" value="" />
                 </div>
                 <div>
-                  <input type="checkbox" id="single_user" name="single_user" checked />
-                  <label for="single_user">Single User</label>
+                  <input type="checkbox" id="shared_user" name="shared_user" checked />
+                  <label for="shared_user">Shared User</label>
                 </div>
                 <div>
                   <input type="checkbox" id="is_container" name="is_container" checked />
@@ -69,7 +69,7 @@
                     {% for config in configs %}
                     <tr class="border-b hover:bg-gray-50">
                             <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.vm_name }} </p>
+                                <p class="p-1 w-full"> {{ config.name }} </p>
                             </td>
                             <td class="p-4">
                                 <p class="p-1 w-full"> {{ config.pve_id }} </p>

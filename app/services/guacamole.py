@@ -8,6 +8,8 @@ from fastapi import WebSocket
 from guacapy import Guacamole
 from guacapy.managers import ConnectionManager
 
+from sqlalchemy.orm import Session
+
 from copy import deepcopy
 
 import app.database as db
@@ -35,8 +37,9 @@ USER_PAYLOAD_TEMPLATE = {
     },
 }
 
-async def update_guacamole_resources(websocket: WebSocket,
-                                     old_team_name: str,
+async def update_guacamole_resources(db_session: Session,
+                                     websocket: WebSocket,
+                                     connection_id: int,
                                      add_emails: list[str],
                                      remove_emails: list[str]
                                      ) -> None:
@@ -56,13 +59,13 @@ async def update_guacamole_resources(websocket: WebSocket,
         # Remove access to deleted students
         # -------------------------------------------------------------
         for email in remove_emails:
-            delete_user(guac, email, old_team_name)
+            delete_user(db_session, guac, email, connection_id)
 
         # -------------------------------------------------------------
         # Create new student connection and access
         # -------------------------------------------------------------
         for email in add_emails:
-            register_new_user(guac, email, old_team_name, False)
+            register_new_user(db_session, guac, email, connection_id)
             
     except HTTPError as http_err:
         status = http_err.response.status_code
@@ -72,27 +75,17 @@ async def update_guacamole_resources(websocket: WebSocket,
         raise RuntimeError(f"Impossible to connect to Guacamole server: {str(req_err)}") from req_err
 
 
-def delete_user(guac: Guacamole, email: str, vm_pve_id: int):
-    # Get user username
-    user_data = db.get_user(email)
-    if not user_data:
-        logging.warning(f"Cannot revoke Guacamole access: User '{email}' not found in database.")
-        return
-
-    _, username, _ = user_data
-    
+def delete_user(db_session: Session, guac: Guacamole, email: str, connection_id: int):
     try:
-        # Get connection id
-        vm_data = db.get_vm(vm_pve_id)
-        connection_id = vm_data.
-        
         guac.connections.revoke_connection(
             username=email,
             connection_id=connection_id,
             permission="READ"
         )
         logging.info(f"Successfully revoked Guacamole access for {email} on connection {connection_id}.")
-        
+
+        # Delete user in database if not attached to a vm anymore
+        db.delete_user(db_session, email)
     except HTTPError as e:
         if getattr(e.response, 'status_code', None) == 404:
             logging.info(f"Guacamole resource already missing for {email} (404). Ignoring.")
@@ -100,16 +93,7 @@ def delete_user(guac: Guacamole, email: str, vm_pve_id: int):
             logging.error(f"Guacamole API HTTPError: {e.response.text if hasattr(e.response, 'text') else str(e)}")
             raise
 
-def register_new_user(guac: Guacamole, email: str, team_name: str, single_user: bool, connection_id = None):
-    # Retrieve information
-    if connection_id == None:
-        if single_user:
-            connection = guac.connections.get_by_name(f"{team_name}")
-        else:
-            _, username, _ = db.get_user(email)
-            connection = guac.connections.get_by_name(f"{team_name}:{username}")
-        connection_id = connection["identifier"]
-            
+def register_new_user(db_session: Session, guac: Guacamole, email: str, connection_id: int):
     # Create guacamole user if doesn't exist
     try:
         guac.users.user_details(email)
@@ -128,7 +112,7 @@ def register_new_user(guac: Guacamole, email: str, team_name: str, single_user: 
         connection_id=connection_id,
     )
     
-async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
+async def register_guacamole_access_single_user(db_session: Session, websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
         hostname=GUACAMOLE_URL,
@@ -138,9 +122,15 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
 
     await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
 
-    _, vm_ip, vm_name, students = db.get_vm(vm_id)
+    vm_data = db.get_vm(db_session, vm_id)
+    if not vm_data:
+        return
+    _, vm_ip, vm_name, students = vm_data
 
-    mail, username, hashed_password = db.get_user(vm_name)
+    user_data = db.get_user(db_session, vm_name)
+    if not user_data:
+        return
+    mail, username, hashed_password = user_data
         
     connection_name = f"{vm_name}"
     connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
@@ -164,11 +154,11 @@ async def register_guacamole_access_single_user(websocket: WebSocket, vm_id):
         raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
 
     for student in students.split(","):
-        register_new_user(guac, student, vm_name, True, conn_id)
+        register_new_user(db_session, guac, student, vm_name, True, conn_id)
         
     await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
     
-async def register_guacamole_access(websocket: WebSocket, vm_id):
+async def register_guacamole_access_multiple_users(db_session: Session, websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
         hostname=GUACAMOLE_URL,
@@ -178,10 +168,16 @@ async def register_guacamole_access(websocket: WebSocket, vm_id):
 
     await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
 
-    _, vm_ip, vm_name, students = db.get_vm(vm_id)
+    vm_data = db.get_vm(db_session, vm_id)
+    if not vm_data:
+        return
+    _, vm_ip, vm_name, students = vm_data
 
     for student in students.split(","):
-        mail, username, hashed_password = db.get_user(student)
+        user_data = db.get_user(db_session, student)
+        if not user_data:
+            return
+        mail, username, hashed_password = user_data
         
         connection_name = f"{vm_name}: ({username})"
         connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)

@@ -5,16 +5,20 @@ import logging
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+from sqlalchemy.orm import Session
+
 from app.core.utils import sanitize_email_to_username, DEFAULT_USERNAME, slugify
 import app.database as db
 
-async def run_delete(websocket: WebSocket, id):
-    vm_id, vm_ip, vm_name, _ = db.get_vm_byid(id)
+async def run_delete(db_session: Session, websocket: WebSocket, id):
+    vm_data = db.get_vm_byid(db_session, id)
+    if not vm_data:
+        return
     
     # Deploy VMs via Ansible
     extra_vars = {
-        "vmid": vm_id,
-        "vm_ip": vm_ip,
+        "vmid": vm_data.pve_id,
+        "vm_ip": vm_data.ip,
     }
 
     env = os.environ.copy()
@@ -31,7 +35,7 @@ async def run_delete(websocket: WebSocket, id):
             env=env
         )
 
-        await websocket.send_text(f"[DELETE] Deleting VM '{vm_id}:{vm_name}({vm_ip})'...")
+        await websocket.send_text(f"[DELETE] Deleting VM '{vm_data.pve_id}:{vm_data.name}({vm_data.ip})'...")
 
         while True and process.stdout is not None:
             line = await process.stdout.readline()
@@ -42,7 +46,7 @@ async def run_delete(websocket: WebSocket, id):
         await process.wait()
 
         if process.returncode == 0:
-            await websocket.send_text(f"[DELETE] Successfully deleted VM '{vm_id}:{vm_name}'.")
+            await websocket.send_text(f"[DELETE] Successfully deleted VM '{vm_data.pve_id}:{vm_data.name}'.")
         else:
             await websocket.send_text(f"[DELETE] Deployment Failed (Exit Code {process.returncode})")
 
@@ -53,6 +57,7 @@ async def run_delete(websocket: WebSocket, id):
         raise
 
 async def run_edit(
+    db_session: Session,
     websocket: WebSocket,
     vmid: int,
     new_team_name: str,
@@ -66,17 +71,21 @@ async def run_edit(
     # Configure ansible variables
     students_to_add_config = []
     for student_mail in students_to_add:
-        _, username, password = db.get_user(student_mail)
+        user_data = db.get_user(db_session, student_mail)
+        if not user_data:
+            return False
         students_to_add_config.append({
-            "username": username,
-            "password": password
+            "username": user_data.username,
+            "password": user_data.password
         })
 
     students_to_remove_config = []
     for student_mail in students_to_remove:
-        _, username, hashed_password = db.get_user(student_mail)
+        user_data = db.get_user(db_session, student_mail)
+        if not user_data:
+            return False
         students_to_remove_config.append({
-            "username": username
+            "username": user_data.username
         })
     
     extra_vars = {
@@ -128,21 +137,23 @@ async def run_edit(
         await websocket.send_text(f"[EDIT] Critical Error: {str(e)}")
         return False
 
-async def run_provide_container(websocket: WebSocket, vm_id):
-    await run_provide(websocket, vm_id, "ansible/01_provider.yml")
+async def run_provide_container(db_session: Session, websocket: WebSocket, vm_id):
+    await run_provide(db_session, websocket, vm_id, "ansible/01_provider.yml")
 
-async def run_provide_vm(websocket: WebSocket, vm_id):
-    await run_provide(websocket, vm_id, "ansible/01_provider_vm.yml")
+async def run_provide_vm(db_session: Session, websocket: WebSocket, vm_id):
+    await run_provide(db_session, websocket, vm_id, "ansible/01_provider_vm.yml")
     
-async def run_provide(websocket: WebSocket, vm_id: int, ansible_playbook_path: str):
-    _, vm_ip, vm_name, emails = db.get_vm(vm_id)
+async def run_provide(db_session: Session, websocket: WebSocket, vm_id: int, ansible_playbook_path: str):
+    vm_data = db.get_vm(db_session, vm_id)
+    if not vm_data:
+        logging.error(f"No vm corresponding with id {vm_id}.")
+        return False
     
     # Deploy VMs via Ansible
     extra_vars = {
-        "vmid": vm_id,
-        "vm_name": vm_name,
-        "ip": vm_ip,
-        "students": emails
+        "vmid": vm_data.pve_id,
+        "vm_name": vm_data.name,
+        "ip": vm_data.ip
     }
 
     env = os.environ.copy()
@@ -159,7 +170,7 @@ async def run_provide(websocket: WebSocket, vm_id: int, ansible_playbook_path: s
             env=env
         )
 
-        await websocket.send_text(f"[PROVIDE] Starting Ansible Providing '{vm_id}:{vm_name}({vm_ip})'...")
+        await websocket.send_text(f"[PROVIDE] Starting Ansible Providing '{vm_id}:{vm_data.name}({vm_data.ip})'...")
 
         while True and process.stdout is not None:
             line = await process.stdout.readline()
@@ -179,33 +190,38 @@ async def run_provide(websocket: WebSocket, vm_id: int, ansible_playbook_path: s
     except Exception as e:
         await websocket.send_text(f"[PROVIDE] Error executing playbook: {str(e)}")
 
-async def run_provision(websocket: WebSocket, vm_id: int, single_user: bool):
+async def run_provision(db_session: Session, websocket: WebSocket, vm_id: int, single_user: bool):
     """
     """
     await websocket.send_text("[PROVISION] Provisionning VM...")
 
-    _, vm_ip, vm_name, emails = db.get_vm(vm_id)
+    vm_data = db.get_vm(db_session, vm_id)
+    if not vm_data:
+        logging.error(f"No VM matches with the id {vm_id}")
+        return
 
     student_credentials = []
 
     if single_user:
-        _, username, password = db.get_user(slugify(vm_name))
+        vm_name = slugify(vm_data.name)
+        user_data = db.get_user(db_session, vm_name)
+        if not user_data:
+            logging.error(f"No user matches with name: {vm_name}")
         student_credentials.append({
-            "username": username,
-            "password": password
+            "username": vm_data.username,
+            "password": vm_data.password
         })
     else:
-        for email in emails.split(","):
-            _, username, password = db.get_user(email)
+        for user in list(vm_data.users):
             student_credentials.append({
-                "username": username,
-                "password": password
+                "username": user.username,
+                "password": user.password
             })
     
     # Deploy VMs via Ansible
     extra_vars = {
         "vmid": vm_id,
-        "vm_ip": vm_ip,
+        "vm_ip": vm_data.ip,
         "student_credentials": student_credentials
     }
 

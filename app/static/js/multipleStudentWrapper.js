@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const emailInput = document.getElementById("student-email-input");
     const tagsContainer = document.getElementById("email-tags-container");
     const hiddenInput = document.getElementById("students-hidden-input");
-    const form = document.getElementById("vm-config-form");
+    const form = document.getElementById("addForm");
 
     let studentEmails = [];
 
