@@ -69,16 +69,20 @@
                     {% for config in configs %}
                     <tr class="border-b hover:bg-gray-50">
                             <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.team_name }} </p>
+                                <p class="p-1 w-full"> {{ config.vm_name }} </p>
                             </td>
                             <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.vm_id }} </p>
+                                <p class="p-1 w-full"> {{ config.pve_id }} </p>
                             </td>
                             <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.vm_ip }} </p>
+                                <p class="p-1 w-full"> {{ config.ip }} </p>
                             </td>
-                            <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.student_emails }} </p>
+                            <td>
+                              <ul>
+                                {% for student in config.users %}
+                                  <li>{{ student.mail }}</li>
+                                {% endfor %}
+                              </ul>
                             </td>
                             <td class="flex gap-2 justify-center items-center p-4">
                               <button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-500" onclick="openEdit({{ config.id }})">Edit</button>

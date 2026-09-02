@@ -6,6 +6,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
 import logging
 import asyncio
 
@@ -37,10 +40,13 @@ templates = Jinja2Templates(directory="app/templates")
 # ----------------------------------------------------
 
 @app.get("/")
-async def read_dashboard(request: Request, admin_user: str = Depends(require_admin)):
-    conn = db.get_db_connection()
-    configs = conn.execute("SELECT * FROM configs ORDER BY id DESC").fetchall()
-    conn.close()
+async def read_dashboard(
+    request: Request, 
+    admin_user: str = Depends(require_admin),
+    db: Session = Depends(db.get_db)  # Inject the database session here
+):
+    stmt = select(db.VMConfig).order_by(db.VMConfig.id.desc())
+    configs = db.scalars(stmt).all()
 
     return templates.TemplateResponse(
         request=request,
@@ -54,7 +60,8 @@ async def read_dashboard(request: Request, admin_user: str = Depends(require_adm
 
 @app.websocket("/ws/add")
 async def add_config(websocket: WebSocket,
-                     admin_user: str = Depends(require_admin_ws)
+                     admin_user: str = Depends(require_admin_ws),
+                     db_session: Session = Depends(db.get_db)
                      ):
     await websocket.accept()
 
@@ -71,19 +78,13 @@ async def add_config(websocket: WebSocket,
         has_shared_user = data.get("has_shared_user") # Tell if the vm has a shared user
         is_container = data.get("is_container") # Tell if the vm is a container
 
-        # Create users in the database
-        await websocket.send_text(f"[ADD] Starting registring students...")
-        if has_shared_user:
-            await websocket.send_text(f"[ADD] Add single user...")
-            db.create_user(team_name, create_user_password())
-        else:
-            await websocket.send_text(f"[ADD] Add students user...")
-            for mail in student_emails.split(","):
-                db.create_user(mail, create_user_password())
-
         # Create vm config in the database
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
-        db.create_vm(team_name, vm_id, vm_ip, student_emails, has_shared_user)
+        db.create_vm(db_session,
+                     db.VMConfig(name=team_name, pve_id=vm_id,
+                                 ip=vm_ip, has_shared_user=has_shared_user,
+                                 is_container=is_container),
+                     student_emails)
 
         await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
 
@@ -123,24 +124,11 @@ async def add_config(websocket: WebSocket,
             # Socket already closed
             pass        
 
-@app.get("/edit/{config_id}", response_class=HTMLResponse)
-async def get_edit_page(request: Request, config_id: int, admin_user: str = Depends(require_admin)):
-    conn = db.get_db_connection()
-    config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
-    conn.close()
-
-    student_mails_list = config["student_emails"].split(",")
-
-    return templates.TemplateResponse(
-        request=request,
-        name="edit.html",
-        context={"config": config, "students": student_mails_list}
-    )
-
 @app.websocket("/ws/edit/{config_id}")
 async def edit_config(config_id: int,
                       websocket: WebSocket,
                       admin_user: str = Depends(require_admin_ws),
+                      db_session: Session = Depends(db.get_db)
                       ):
     await websocket.accept()
 
@@ -156,14 +144,13 @@ async def edit_config(config_id: int,
         student_emails = data.get("student_emails")
 
         await websocket.send_text("[EDIT] Fetching old VM configuration...")
-        conn = db.get_db_connection()
-        old_config = conn.execute("SELECT * FROM configs WHERE id = ?", (config_id,)).fetchone()
+        old_config = db.get_vm(db_session, vm_id)
     
         if not old_config:
-            conn.close()
             await websocket.send_text("[EDIT] Error: no configuration matched found...")
             raise HTTPException(status_code=404, detail="No configuration matched")
 
+        # Get students to add and students to remove
         await websocket.send_text("[EDIT] Processing students to add and remove configuration...")
         old_list = set(filter(None, [s.strip() for s in old_config["student_emails"].split(",")]))
         new_list = set(filter(None, [s.strip() for s in student_emails.split(",")]))
@@ -174,7 +161,8 @@ async def edit_config(config_id: int,
         # Register new students and delete olds
         await websocket.send_text("[EDIT] Creating students to add in DataBase...")
         for mail in to_add:
-            db.create_user(mail, create_user_password())
+            # db.create_user(mail, create_user_password())
+            pass
 
         await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
         for mail in to_remove:
@@ -203,23 +191,15 @@ async def edit_config(config_id: int,
                 )
 
                 await websocket.send_text("[EDIT] Updating DataBase...")
+
                 # Update DB
-                conn.execute(
-                    """UPDATE configs 
-                    SET team_name = ?, vm_id = ?, vm_ip = ?, student_emails = ? 
-                    WHERE id = ?""",
-                    (team_name, vm_id, vm_ip, student_emails, config_id)
-                )
-                conn.commit()
+                # TODO: update vm db
 
                 await websocket.send_text("[EDIT] Successfully edit configuration!")
             else:
                 await websocket.send_text("[EDIT] Error: Ansible edit process did not ended successfully.")
         except Exception as e:
-            conn.rollback()
             await websocket.send_text(f"[EDIT] Edition error: {str(e)}")
-        finally:
-            conn.close()
             
     except WebSocketDisconnect:
         logging.info("[EDIT] Client disconnected during deployment execution.")
@@ -233,7 +213,8 @@ async def edit_config(config_id: int,
 @app.websocket("/ws/delete/{config_id}")
 async def delete_config(config_id: int,
                         websocket: WebSocket,
-                        admin_user: str = Depends(require_admin_ws)):
+                        admin_user: str = Depends(require_admin_ws),
+                        db_session: Session = Depends(db.get_db)):
     await websocket.accept()
 
     await websocket.send_text(f"[DELETE] Delete config {config_id}...")
@@ -243,7 +224,7 @@ async def delete_config(config_id: int,
         await ansible.run_delete(websocket, config_id)
 
         # Delete it in the database only if delete on server worked
-        db.delete_vm(config_id)
+        db.delete_vm(db_session, config_id)
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
     except Exception as e:

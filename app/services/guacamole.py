@@ -72,26 +72,33 @@ async def update_guacamole_resources(websocket: WebSocket,
         raise RuntimeError(f"Impossible to connect to Guacamole server: {str(req_err)}") from req_err
 
 
-def delete_user(guac: Guacamole, email: str, team_name: str):
+def delete_user(guac: Guacamole, email: str, vm_pve_id: int):
+    # Get user username
+    user_data = db.get_user(email)
+    if not user_data:
+        logging.warning(f"Cannot revoke Guacamole access: User '{email}' not found in database.")
+        return
+
+    _, username, _ = user_data
+    
     try:
-        # Get user username
-        _, username, _ = db.get_user(email)
-        # Retrieve connection
-        connection = guac.connections.get_by_name(f"{team_name}:{username}")
         # Get connection id
-        connection_id = connection["identifier"]
+        vm_data = db.get_vm(vm_pve_id)
+        connection_id = vm_data.
         
         guac.connections.revoke_connection(
             username=email,
             connection_id=connection_id,
             permission="READ"
         )
+        logging.info(f"Successfully revoked Guacamole access for {email} on connection {connection_id}.")
+        
     except HTTPError as e:
-        if e.response.status_code != 404:
-            raise e
-    except TypeError as te:
-        logging.info(f"[EDIT] Type Error: {str(te)}")
-        return
+        if getattr(e.response, 'status_code', None) == 404:
+            logging.info(f"Guacamole resource already missing for {email} (404). Ignoring.")
+        else:
+            logging.error(f"Guacamole API HTTPError: {e.response.text if hasattr(e.response, 'text') else str(e)}")
+            raise
 
 def register_new_user(guac: Guacamole, email: str, team_name: str, single_user: bool, connection_id = None):
     # Retrieve information

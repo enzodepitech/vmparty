@@ -1,185 +1,166 @@
 import logging
-import sqlite3
 import os
+from typing import Optional, Tuple, List
+
+from app.core.security import create_user_password
+from sqlalchemy import create_engine, select, Table, Column, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, relationship
+from sqlalchemy.exc import IntegrityError
 
 from app.core.utils import sanitize_email_to_username
 
-DB_PATH = "storage/app.db"
+# SQLAlchemy requires the sqlite:/// prefix
+DB_DIR = "storage"
+DB_PATH = f"sqlite:///{DB_DIR}/app.db"
 
-def init_db():
-    os.makedirs("storage", exist_ok=True)
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        create_vm_table(cursor)
-        create_vm_user_table(cursor)
-        conn.commit()
+# engine manages the connection pool
+engine = create_engine(DB_PATH, echo=False)
 
-def create_vm_table(cursor):
-    cursor.execute("""
-            CREATE TABLE IF NOT EXISTS configs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                team_name TEXT NOT NULL,
-                vm_id INTEGER NOT NULL UNIQUE,
-                vm_ip TEXT NOT NULL,
-                student_emails TEXT NOT NULL,
-                single_user INTEGER NOT NULL
-            )
-        """)
+class Base(DeclarativeBase):
+    pass
 
-def create_vm_user_table(cursor):
-    """
-    Table for user in linux vm
-    """
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS vm_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    mail TEXT NOT NULL UNIQUE,
-    username TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL
+# ---------------------------------------------------------
+# Association Table for Many-to-Many
+# ---------------------------------------------------------
+
+user_vm_association = Table(
+    "user_vm_association",
+    Base.metadata,
+    Column("user_id", ForeignKey("vm_users.id", ondelete="CASCADE"), primary_key=True),
+    Column("vm_id", ForeignKey("configs.id", ondelete="CASCADE"), primary_key=True),
+)
+
+# ---------------------------------------------------------
+# Data Models
+# ---------------------------------------------------------
+class VMConfig(Base):
+    __tablename__ = "vm_configs"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str]
+    pve_id: Mapped[int] = mapped_column(unique=True)
+    ip: Mapped[str] = mapped_column(unique=True)
+    has_shared_user: Mapped[bool]
+    is_container: Mapped[bool]
+    guac_conn_id: Mapped[int] = mapped_column(unique=True, default=0)
+
+    # Replaces 'student_emails' string
+    users: Mapped[List["VMUser"]] = relationship(
+        secondary=user_vm_association, 
+        back_populates="vms"
     )
-    """)
 
-def get_user(mail):
-    conn = None
-    conn = get_db_connection()
-    user = conn.execute("SELECT * FROM vm_users WHERE mail = ?", (mail,)).fetchone()
-    conn.close()
 
-    username = user["username"]
-    hashed_password = user["password"]
-
-    return mail, username, hashed_password
-
-def get_vm(vm_id):
-    conn = None
-    conn = get_db_connection()
-    vm_config = conn.execute("SELECT * FROM configs WHERE vm_id = ?", (vm_id,)).fetchone()
-    conn.close()
-
-    vm_ip = vm_config["vm_ip"]
-    vm_name = vm_config["team_name"]
-    student_emails = vm_config["student_emails"]
-
-    return vm_id, vm_ip, vm_name, student_emails
-
-def get_vm_byid(id):
-    conn = None
-    conn = get_db_connection()
-    vm_config = conn.execute("SELECT * FROM configs WHERE id = ?", (id,)).fetchone()
-    conn.close()
-
-    vm_id = vm_config["vm_id"]
-    vm_ip = vm_config["vm_ip"]
-    vm_name = vm_config["team_name"]
-    student_emails = vm_config["student_emails"]
-
-    return vm_id, vm_ip, vm_name, student_emails
-
-def delete_vm(config_id):
-    _, _, _, emails = get_vm_byid(config_id)
-
-    for email in emails.split(","):
-        delete_user(email)
+class VMUser(Base):
+    __tablename__ = "vm_users"
     
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("DELETE FROM configs WHERE id = ?", (config_id,))
-        conn.commit()
-        
-        if cursor.rowcount == 0:
-            logging.warning(f"No vm found with id '{config_id}'")
-            return False
-            
-        logging.info(f"VM '{config_id}' deleted successfully.")
-        return True
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    mail: Mapped[str] = mapped_column(unique=True)
+    username: Mapped[str] = mapped_column(unique=True)
+    password: Mapped[str]
 
-    except sqlite3.Error as e:
-        if conn:
-            conn.rollback()
-        logging.error(f"Error deleting VM '{config_id}': {e}")
-        return False
-    finally:
-        if conn:
-            conn.close()
+    # Back-reference to see all VMs a user belongs to
+    vms: Mapped[List["VMConfig"]] = relationship(
+        secondary=user_vm_association, 
+        back_populates="users"
+    )    
+    
+# ---------------------------------------------------------
+# Database Operations
+# ---------------------------------------------------------
+def init_db():
+    os.makedirs(DB_DIR, exist_ok=True)
+    # Creates all tables based on the models above if they don't exist
+    Base.metadata.create_all(engine)
 
-def update_connection_id_vm(vm_id, conn_id):
-    conn = None
+def get_db():
+    with Session(engine) as session:
+        yield session
+    
+def get_user(db_session: Session, mail: str) -> VMUser | None:
+    return db_session.scalar(select(VMUser).where(VMUser.mail == mail))
+    
+def get_vm(db_session: Session, pve_id: int) -> VMConfig | None:
+    return db_session.scalar(select(VMConfig).where(VMConfig.pve_id == pve_id))
+
+def get_vm_byid(db_session: Session, config_id: int) -> VMConfig | None:
+    return db_session.scalar(select(VMConfig).where(VMConfig.id == config_id))
+
+def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
+    for email in student_emails.strip(','):
+        # Check if user exists
+        user = db_session.scalar(select(VMUser).where(VMUser.mail == email))
+
+        # Create user if not exists
+        if not user:
+            username = sanitize_email_to_username(email)
+            user = VMUser(mail=email, username=username, password=create_user_password())
+            db_session.add(user)
+
+        # Add user to the vm config
+        vm_config.users.append(user)
+
+    db_session.add(vm_config)
+    
     try:
-        conn = get_db_connection()
-        # todo: update
-        # conn.execute()
-        conn.commit()
-    except sqlite3.IntegrityError:
+        db_session.commit()
+        logging.info(f"VM '{vm_config.vm_name}' successfully created.")
+    except IntegrityError:
+        db_session.rollback()
         logging.error("VM ID must be unique.")
         raise ValueError("Cannot add VM: VM ID must be unique")
-    finally:
-        if conn:
-            conn.close()
-    
-            
-def create_vm(vm_name, vm_id, vm_ip, student_emails, has_single_user):
-    conn = None
-    try:
-        conn = get_db_connection()
-        conn.execute(
-            "INSERT INTO configs (team_name, vm_id, vm_ip, student_emails) VALUES (?, ?, ?, ?)",
-            (vm_name, vm_id, vm_ip, student_emails)
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        logging.error("VM ID must be unique.")
-        raise ValueError("Cannot add VM: VM ID must be unique")
-    finally:
-        if conn:
-            conn.close()
-
-def create_user(mail, password):
-    username = sanitize_email_to_username(mail)
-    
-    conn = None
-    try:
-        conn = get_db_connection()
-        conn.execute(
-            "INSERT INTO vm_users (mail, username, password) VALUES (?, ?, ?)",
-            (mail, username, password)
-        )
-        conn.commit()
-    except sqlite3.IntegrityError as e:
-        logging.error(f"Cannot create user '{username}': {e}");
-    finally:
-        if conn:
-            conn.close()
-
-def delete_user(mail):
-    username = sanitize_email_to_username(mail)
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
         
-        cursor.execute("DELETE FROM vm_users WHERE mail = ?", (mail,))
-        conn.commit()
-        
-        if cursor.rowcount == 0:
-            logging.warning(f"No user found with email '{mail}' (username: {username}).")
-            return False
-            
-        logging.info(f"User '{username}' ({mail}) deleted successfully.")
-        return True
+def update_connection_id_vm(db_session: Session, vm_id: int, conn_id: int):
+    vm = db_session.scalar(select(VMConfig).where(VMConfig.vm_id == vm_id))
+    if vm:
+        vm.conn_id = conn_id
+        db_session.commit()
+        logging.info(f"Updated connection ID for VM '{vm_id}'.")
+    else:
+        logging.warning(f"No VM found with ID '{vm_id}' to update.")
 
-    except sqlite3.Error as e:
-        if conn:
-            conn.rollback()
-        logging.error(f"Error deleting user '{username}': {e}")
+def delete_vm(db_session: Session, config_id: int) -> bool:
+    vm = db_session.get(VMConfig, config_id)
+    if not vm:
+        logging.warning(f"No VM found with id '{config_id}'")
         return False
-    finally:
-        if conn:
-            conn.close()
+        
+    # Keep a reference to the users before deleting the VM
+    affected_users = list(vm.users)
+    
+    # Deleting the VM automatically removes the links in the association table
+    db_session.delete(vm)
+    
+    # Orphan cleanup: Delete users who no longer belong to ANY virtual machine
+    for user in affected_users:
+        # If the user's vms list is now empty, they have no active projects
+        if not user.vms: 
+            db_session.delete(user)
+            logging.info(f"Deleted orphaned user {user.mail}")
+
+    db_session.commit()
+    logging.info(f"VM '{config_id}' deleted successfully.")
+    return True
             
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+def delete_user(db_session: Session, mail: str) -> bool:
+    user = db_session.scalar(select(VMUser).where(VMUser.mail == mail))
+    
+    if not user:
+        logging.warning(f"Cannot delete: No user found with email '{mail}'.")
+        return False
+        
+    # Optional: Check if deleting this user leaves any of their VMs completely empty
+    affected_vms = list(user.vms)
+    
+    # Deleting the user automatically drops their links in user_vm_association
+    db_session.delete(user)
+    
+    # Check for empty VMs (orphaned infrastructure)
+    for vm in affected_vms:
+        if len(vm.users) == 0:  # The user we just deleted was the last one
+            logging.warning(f"VM '{vm.team_name}' (ID: {vm.vm_id}) now has 0 users.")
+            # db.delete(vm) # Uncomment if you want to auto-destroy empty VMs
+
+    db_session.commit()
+    logging.info(f"User '{mail}' deleted successfully.")
+    return True

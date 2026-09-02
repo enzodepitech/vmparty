@@ -13,3 +13,4 @@ argon2-cffi
 itsdangerous
 python-multipart
 passlib
+sqlalchemy
