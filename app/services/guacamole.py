@@ -158,7 +158,7 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
     try:
         connection = guac.connections.create(connection_payload)
         conn_id = connection["identifier"]
-        db.update_connection_id_vm(db_session, vm_data.pve_id, conn_id)
+        db.update_connection_id_vm(db_session, config_id, conn_id)
         await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
         logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
     except TypeError as e:
@@ -206,7 +206,7 @@ async def register_guacamole_access_multiple_users(db_session: Session, websocke
         try:
             connection = guac.connections.create(connection_payload)
             conn_id = connection["identifier"]
-            db.update_connection_id_vm(db_session, vm_data.pve_id, conn_id)
+            db.update_connection_id_vm(db_session, config_id, conn_id)
             await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
             logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})");
         except TypeError as e:

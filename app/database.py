@@ -173,14 +173,14 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
 # Update
 # --------------------------------------------------
     
-def update_connection_id_vm(db_session: Session, vm_id: int, conn_id: int):
-    vm = db_session.scalar(select(VMConfig).where(VMConfig.vm_id == vm_id))
+def update_connection_id_vm(db_session: Session, config_id: int, conn_id: int):
+    vm = db_session.scalar(select(VMConfig).where(VMConfig.id == config_id))
     if vm:
         vm.conn_id = conn_id
         db_session.commit()
-        logging.info(f"Updated connection ID for VM '{vm_id}'.")
+        logging.info(f"Updated connection ID for VM '{config_id}'.")
     else:
-        logging.warning(f"No VM found with ID '{vm_id}' to update.")
+        logging.warning(f"No VM found with ID '{config_id}' to update.")
 
 def vm_update_status(db: Session, config_id: int, new_status: VMStatus):
     vm = db.get(VMConfig, config_id)
