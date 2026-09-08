@@ -86,7 +86,7 @@ def delete_user(db_session: Session, guac: Guacamole, email: str, connection_id:
     try:
         guac.connections.revoke_connection(
             username=email,
-            connection_id=connection_id,
+            connection_id=str(connection_id),
             permission="READ"
         )
         logging.info(f"Successfully revoked Guacamole access for {email} on connection {connection_id}.")

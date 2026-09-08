@@ -134,7 +134,7 @@ async def register_in_guacamole(config_id: int,
             # await guacamole.register_guacamole_access(websocket, config_id)
             pass
 
-        await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
+        await websocket.send_text(f"[VM] [REGISTER] Successfully Register VM to Guacamole.")
     except WebSocketDisconnect:
         logging.info("Client disconnected during deployment execution.")
     except ValueError as ve:
@@ -243,48 +243,45 @@ async def edit_config(config_id: int,
         to_remove = list(old_list - new_list) # Students to remove
 
         # Register new students and delete olds
-        await websocket.send_text("[EDIT] Creating students to add in DataBase...")
-        for mail in to_add:
-            # db.create_user(mail, create_user_password())
-            pass
+        if not old_config.has_shared_user:
+            await websocket.send_text("[EDIT] Creating students to add in DataBase...")
+            for mail in to_add:
+                # db.create_user(mail, create_user_password())
+                pass
 
-        await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
-        for mail in to_remove:
-            # db.delete_user(mail)
-            pass
+            await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
+            for mail in to_remove:
+                # db.delete_user(mail)
+                pass
 
         try: 
             # Edit server VM name & Update Linux users
-            await websocket.send_text("[EDIT] Ansible updating VM on server...")
-            ansible_success = await ansible.run_edit(
-                db_session,
-                websocket,
-                config_id=config_id,
-                vmid=vm_id,
-                new_team_name=team_name,
-                students_to_add=to_add,
-                students_to_remove=to_remove
-            )
-
-            if ansible_success:
-                # Update guacamole access
-                await websocket.send_text("[EDIT] Updating Guacamole Resources...")
-                await guacamole.update_guacamole_resources(
+            if not old_config.has_shared_user:
+                await websocket.send_text("[EDIT] Ansible updating VM on server...")
+                ansible_success = await ansible.run_edit(
                     db_session,
                     websocket,
-                    old_config.guac_conn_id,
-                    add_emails=to_add,
-                    remove_emails=to_remove
+                    config_id=config_id,
+                    vmid=vm_id,
+                    new_team_name=team_name,
+                    students_to_add=to_add,
+                    students_to_remove=to_remove
                 )
 
-                await websocket.send_text("[EDIT] Updating DataBase...")
+                if not ansible_success:
+                    return False
 
-                # Update DB
-                # TODO: update vm db
+            # Update guacamole access
+            await websocket.send_text("[EDIT] Updating Guacamole Resources...")
+            await guacamole.update_guacamole_resources(
+                db_session,
+                websocket,
+                old_config.guac_conn_id,
+                add_emails=to_add,
+                remove_emails=to_remove
+            )
 
-                await websocket.send_text("[EDIT] Successfully edit configuration!")
-            else:
-                await websocket.send_text("[EDIT] Error: Ansible edit process did not ended successfully.")
+            await websocket.send_text("[EDIT] Successfully edit configuration!")
         except Exception as e:
             await websocket.send_text(f"[EDIT] Edition error: {str(e)}")
             
