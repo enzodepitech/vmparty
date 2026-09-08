@@ -5,7 +5,7 @@ import enum
 from typing import List
 
 from app.core.security import create_user_password
-from sqlalchemy import create_engine, select, Table, Column, ForeignKey, Enum
+from sqlalchemy import create_engine, select, Table, Column, ForeignKey, Enum, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, relationship
 from sqlalchemy.exc import IntegrityError
 
@@ -71,7 +71,7 @@ class VMConfig(Base):
         back_populates="vms"
     )
 
-    guac_users: Mapped[List[str]]
+    guac_users: Mapped[List[str]] = mapped_column(JSON)
 
 
 class VMUser(Base):
@@ -159,7 +159,7 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
 
     guac_users = set(student_emails.split(','))
     for email in guac_users:
-        vm_config.guac_users.append(email)
+        vm_config.guac_users = vm_config.guac_users + [f"{email}"]
 
     try:
         db_session.commit()
