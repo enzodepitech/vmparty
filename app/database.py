@@ -71,6 +71,8 @@ class VMConfig(Base):
         back_populates="vms"
     )
 
+    guac_users: Mapped[List[str]]
+
 
 class VMUser(Base):
     __tablename__ = "vm_users"
@@ -154,6 +156,10 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
             user = VMUser(mail=vm_config.name, username=vm_config.name, password=create_user_password())
             db_session.add(user)
         vm_config.users.append(user)
+
+    guac_users = set(student_emails.split(','))
+    for email in guac_users:
+        vm_config.guac_users.append(email)
 
     try:
         db_session.commit()

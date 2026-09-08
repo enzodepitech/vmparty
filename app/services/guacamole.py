@@ -129,14 +129,18 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
         password=GUAC_ADMIN_PASS
     )
 
-    await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
+    await websocket.send_text("[VM] [REGISTER] [GUAC] Successfully connected to guacamole.")
 
     vm_data = db.get_vm_byid(db_session, config_id)
     if not vm_data:
+        logging.error(f"[VM] [REGISTER] [GUAC] No VM Matched with the config id '{config_id}'")
+        websocket.send_text(f"[VM] [REGISTER] [GUAC] No VM Matched with the config id '{config_id}'")
         return
 
     user_data = db.get_user(db_session, vm_data.name)
     if not user_data:
+        logging.error(f"[VM] [REGISTER] [GUAC] No user Matched with the name '{vm_data.name}'")
+        websocket.send_text(f"[VM] [REGISTER] [GUAC] No user Matched with the config id '{vm_data.name}'")
         return
         
     connection_name = f"{vm_data.name}"
@@ -161,8 +165,8 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
         await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
         raise ValueError(f"Connection {vm_data.pve_id} already exists in guacamole. Please delete it.")
 
-    for user in list(vm_data.users):
-        register_new_user(db_session, guac, user.mail, vm_data.guac_conn_id)
+    for guac_user_mail in list(vm_data.guac_users):
+        register_new_user(db_session, guac, guac_user_mail, vm_data.guac_conn_id)
 
     db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
     await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
@@ -207,7 +211,7 @@ async def register_guacamole_access_multiple_users(db_session: Session, websocke
             logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})");
         except TypeError as e:
             await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
-            raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
+            raise ValueError(f"Connection {config_id} already exists in guacamole. Please delete it.")
 
         # Create guacamole user
         try:
