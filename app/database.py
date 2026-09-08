@@ -136,19 +136,23 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
     """
     db_session.add(vm_config)
 
-    unique_emails = set(student_emails.split(','))
+    if not vm_config.has_shared_user:
+        unique_emails = set(student_emails.split(','))
     
-    for email in unique_emails:
-        # Check if user exists
-        user = db_session.scalar(select(VMUser).where(VMUser.mail == email))
-
-        # Create user if not exists
+        for email in unique_emails:
+            # Check if user exists
+            user = db_session.scalar(select(VMUser).where(VMUser.mail == email))
+            if not user:
+                username = sanitize_email_to_username(email)
+                user = VMUser(mail=email, username=username, password=create_user_password())
+                db_session.add(user)
+            # Add user to the vm config
+            vm_config.users.append(user)
+    else:
+        user = db_session.scalar(select(VMUser).where(VMUser.mail == vm_config.name))
         if not user:
-            username = sanitize_email_to_username(email)
-            user = VMUser(mail=email, username=username, password=create_user_password())
+            user = VMUser(mail=vm_config.name, username=vm_config.name, password=create_user_password())
             db_session.add(user)
-
-        # Add user to the vm config
         vm_config.users.append(user)
 
     try:
