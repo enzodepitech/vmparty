@@ -28,7 +28,6 @@ async def run_delete(db_session: Session, websocket: WebSocket, id):
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
             "ansible/04_delete.yml",
-            "-vvv",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -106,7 +105,6 @@ async def run_edit(
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook", 
             "ansible/03_edit.yml",
-            "-vvv",
             "-i", "ansible/inventory.ini",
             "-e", json.dumps(extra_vars),
             "-l", f"vm_{vmid}",
@@ -163,7 +161,6 @@ async def run_provide(db_session: Session, websocket: WebSocket, vm_id: int, ans
         process = await asyncio.create_subprocess_exec(
             "ansible-playbook",
             ansible_playbook_path,
-            "-vvv",
             "-e", json.dumps(extra_vars),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
@@ -190,26 +187,30 @@ async def run_provide(db_session: Session, websocket: WebSocket, vm_id: int, ans
     except Exception as e:
         await websocket.send_text(f"[PROVIDE] Error executing playbook: {str(e)}")
 
-async def run_provision(db_session: Session, websocket: WebSocket, vm_id: int, single_user: bool):
+async def run_provision(db_session: Session, websocket: WebSocket, config_id: int):
     """
     """
     await websocket.send_text("[PROVISION] Provisionning VM...")
 
-    vm_data = db.get_vm(db_session, vm_id)
+    vm_data = db.get_vm_byid(db_session, config_id)
     if not vm_data:
-        logging.error(f"No VM matches with the id {vm_id}")
-        return
+        logging.error(f"[ANSIBLE] [PROVISION] No VM Matched with the config id '{config_id}'")
+        websocket.send_text(f"[ANSIBLE] [PROVISION] No VM Matched with the config id '{config_id}'")
+        return False
 
     student_credentials = []
 
-    if single_user:
-        vm_name = slugify(vm_data.name)
+    if vm_data.has_shared_user:
+        vm_name = slugify(vm_data.name) # vm name is the shared user
         user_data = db.get_user(db_session, vm_name)
         if not user_data:
-            logging.error(f"No user matches with name: {vm_name}")
+            logging.error(f"[ANSIBLE] [PROVISION] No User Matched with the name '{vm_name}'")
+            websocket.send_text(f"[ANSIBLE] [PROVISION] No User Matched with the name '{vm_name}'")
+            return False
+        
         student_credentials.append({
-            "username": vm_data.username,
-            "password": vm_data.password
+            "username": user_data.username,
+            "password": user_data.password
         })
     else:
         for user in list(vm_data.users):
@@ -220,7 +221,7 @@ async def run_provision(db_session: Session, websocket: WebSocket, vm_id: int, s
     
     # Deploy VMs via Ansible
     extra_vars = {
-        "vmid": vm_id,
+        "vmid": vm_data.pve_id,
         "vm_ip": vm_data.ip,
         "student_credentials": student_credentials
     }
@@ -261,4 +262,5 @@ async def run_provision(db_session: Session, websocket: WebSocket, vm_id: int, s
         logging.info("[PROVISION] Client disconnected during deployment execution.")
     except Exception as e:
         await websocket.send_text(f"[PROVISION] Error executing playbook: {str(e)}")
-        
+
+    return True

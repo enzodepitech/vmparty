@@ -37,6 +37,10 @@ USER_PAYLOAD_TEMPLATE = {
     },
 }
 
+# --------------------------------------------
+# Edit guacamole
+# --------------------------------------------
+
 async def update_guacamole_resources(db_session: Session,
                                      websocket: WebSocket,
                                      connection_id: int,
@@ -74,7 +78,10 @@ async def update_guacamole_resources(db_session: Session,
     except RequestException as req_err:
         raise RuntimeError(f"Impossible to connect to Guacamole server: {str(req_err)}") from req_err
 
-
+# --------------------------------------------
+# User management
+# --------------------------------------------
+    
 def delete_user(db_session: Session, guac: Guacamole, email: str, connection_id: int):
     try:
         guac.connections.revoke_connection(
@@ -84,8 +91,6 @@ def delete_user(db_session: Session, guac: Guacamole, email: str, connection_id:
         )
         logging.info(f"Successfully revoked Guacamole access for {email} on connection {connection_id}.")
 
-        # Delete user in database if not attached to a vm anymore
-        db.delete_user(db_session, email)
     except HTTPError as e:
         if getattr(e.response, 'status_code', None) == 404:
             logging.info(f"Guacamole resource already missing for {email} (404). Ignoring.")
@@ -111,6 +116,10 @@ def register_new_user(db_session: Session, guac: Guacamole, email: str, connecti
         permission="READ",
         connection_id=connection_id,
     )
+
+# --------------------------------------------
+# Connection
+# --------------------------------------------
     
 async def register_guacamole_access_single_user(db_session: Session, websocket: WebSocket, vm_id):
     # Authenticate to Guacamole REST API via admin account
@@ -125,21 +134,19 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
     vm_data = db.get_vm(db_session, vm_id)
     if not vm_data:
         return
-    _, vm_ip, vm_name, students = vm_data
 
-    user_data = db.get_user(db_session, vm_name)
+    user_data = db.get_user(db_session, vm_data.name)
     if not user_data:
         return
-    mail, username, hashed_password = user_data
         
-    connection_name = f"{vm_name}"
+    connection_name = f"{vm_data.name}"
     connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
     connection_payload.update({
         "name": connection_name,
         "parameters": {
-            "username": username,
-            "hostname": vm_ip,
-            "password": hashed_password
+            "username": user_data.username,
+            "hostname": vm_data.ip,
+            "password": user_data.password
         }
     })
 
@@ -147,14 +154,15 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
     try:
         connection = guac.connections.create(connection_payload)
         conn_id = connection["identifier"]
-        await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_name}' (ID: {conn_id})")
-        logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_name}' (ID: {conn_id})")
+        db.update_connection_id_vm(db_session, vm_data.pve_id, conn_id)
+        await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
+        logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
     except TypeError as e:
         await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
-        raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
+        raise ValueError(f"Connection {vm_data.pve_id} already exists in guacamole. Please delete it.")
 
-    for student in students.split(","):
-        register_new_user(db_session, guac, student, vm_name, True, conn_id)
+    for user in list(vm_data.users):
+        register_new_user(db_session, guac, user.mail, vm_data.guac_conn_id)
         
     await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
     
@@ -171,22 +179,21 @@ async def register_guacamole_access_multiple_users(db_session: Session, websocke
     vm_data = db.get_vm(db_session, vm_id)
     if not vm_data:
         return
-    _, vm_ip, vm_name, students = vm_data
 
-    for student in students.split(","):
-        user_data = db.get_user(db_session, student)
+    for user in list(vm_data.users):
+
+        user_data = db.get_user(db_session, user.mail)
         if not user_data:
+            logging.error(f"No user matched with the mail {user.mail}")
             return
-        mail, username, hashed_password = user_data
         
-        connection_name = f"{vm_name}: ({username})"
         connection_payload = deepcopy(ConnectionManager.SSH_TEMPLATE)
         connection_payload.update({
-            "name": connection_name,
+            "name": vm_data.name,
             "parameters": {
-                "hostname": vm_ip,
-                "username": username,
-                "password": hashed_password
+                "hostname": vm_data.ip,
+                "username": user_data.username,
+                "password": user_data.password
             }
         })
         
@@ -194,10 +201,9 @@ async def register_guacamole_access_multiple_users(db_session: Session, websocke
         try:
             connection = guac.connections.create(connection_payload)
             conn_id = connection["identifier"]
-            await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_name}' (ID: {conn_id})")
-            logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_name}' (ID: {conn_id})");
-            
-            # Create user in the database
+            db.update_connection_id_vm(db_session, vm_data.pve_id, conn_id)
+            await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
+            logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})");
         except TypeError as e:
             await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
             raise ValueError(f"Connection {vm_id} already exists in guacamole. Please delete it.")
@@ -205,26 +211,26 @@ async def register_guacamole_access_multiple_users(db_session: Session, websocke
         # Create guacamole user
         try:
             user_payload = deepcopy(USER_PAYLOAD_TEMPLATE)
-            user_payload["username"] = mail
+            user_payload["username"] = user.mail
             guac.users.create(user_payload)
         except HTTPError as e:
             status_code = e.response.status_code
             if status_code == 400:
-                await websocket.send_text(f"[GUACAMOLE] User {mail} already exists.")
+                await websocket.send_text(f"[GUACAMOLE] User {user.mail} already exists.")
             else:
                 raise
 
         # Assign connection permission to the user
         try:
             guac.users.assign_connection(
-                username=student,
+                username=user.mail,
                 permission="READ",
-                connection_id=conn_id,
+                connection_id=vm_data.guac_conn_id,
             )
-            await websocket.send_text(f"[GUACAMOLE] Successfully granted student '{mail}:{username}' access to '{vm_name}'")
+            await websocket.send_text(f"[GUACAMOLE] Successfully granted student '{user.mail}:{user.username}' access to '{vm_data.name}'")
         except HTTPError as e:
             status_code = e.response.status_code
             if status_code == 500:
-                await websocket.send_text(f"[GUACAMOLE] Connection already assigned for '{mail}'")
+                await websocket.send_text(f"[GUACAMOLE] Connection already assigned for '{user.mail}'")
             else:
                 raise

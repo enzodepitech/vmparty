@@ -60,6 +60,91 @@ async def read_dashboard(
 # Action Routes (Add, Delete, Edit)
 # ----------------------------------------------------
 
+@app.websocket("/ws/vm/provide/{config_id}")
+async def provide(config_id: int,
+                  websocket: WebSocket,
+                  admin_user: str = Depends(require_admin_ws),
+                  db_session: Session = Depends(db.get_db)
+                  ):
+    await websocket.accept()
+
+    try:
+        # Run ansible providing for vm.id = config_id
+        vm_data = db.get_vm_byid(db_session, config_id)
+        if not vm_data:
+            logging.error(f"[VM] [PROVIDE] No VM Matched with the config id '{config_id}'")
+            websocket.send_text(f"[VM] [PROVIDE] No VM Matched with the config id '{config_id}'")
+            return
+        
+        # Run provider playbook
+        if vm_data.type == db.VMType.lxc:
+            await ansible.run_provide_container(db_session, websocket, vm_data.pve_id)
+        else:
+            await ansible.run_provide_vm(db_session, websocket, vm_data.pve_id)
+
+        await websocket.send_text(f"[ADD] Successfully Provided VM {vm_data.name}.")
+    except WebSocketDisconnect:
+        logging.info("Client disconnected during deployment execution.")
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass        
+
+@app.websocket("/ws/vm/provision/{config_id}")
+async def provision(config_id: int,
+                    websocket: WebSocket,
+                    admin_user: str = Depends(require_admin_ws),
+                    db_session: Session = Depends(db.get_db)
+                    ):
+    await websocket.accept()
+
+    try:
+        # Run provisioner playbook
+        await ansible.run_provision(db_session, websocket, config_id)
+    except WebSocketDisconnect:
+        logging.info("Client disconnected during deployment execution.")
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass
+
+@app.websocket("/ws/vm/register/guacamole/{config_id}")
+async def register_in_guacamole(config_id: int,
+                                websocket: WebSocket,
+                                admin_user: str = Depends(require_admin_ws),
+                                db_session: Session = Depends(db.get_db)
+                                ):
+    await websocket.accept()
+
+    try:
+        # Run ansible provisioning for vm.id = config_id
+        vm_data = db.get_vm_byid(db_session, config_id)
+        if not vm_data:
+            logging.error(f"[VM] [REGISTER] [GUAC] No VM Matched with the config id '{config_id}'")
+            websocket.send_text(f"[VM] [REGISTER] [GUAC] No VM Matched with the config id '{config_id}'")
+            return
+
+        # Register vm guacamole access
+        if vm_data.has_shared_user:
+            await guacamole.register_guacamole_access_single_user(db_session, websocket, vm_data.pve_id)
+        else:
+            # TODO: register for multiple users
+            # await guacamole.register_guacamole_access(websocket, vm_id)
+            pass
+
+        await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
+    except WebSocketDisconnect:
+        logging.info("Client disconnected during deployment execution.")
+    except ValueError as ve:
+        logging.error(f"[VM] [REGISTER] [GUAC] Value Error: {str(ve)}")
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass                
+
 @app.websocket("/ws/add")
 async def add_config(websocket: WebSocket,
                      admin_user: str = Depends(require_admin_ws),
@@ -73,52 +158,28 @@ async def add_config(websocket: WebSocket,
         # Fetch data
         data = await websocket.receive_json()
         
-        team_name = slugify(data.get("team_name")) # VM Name
+        vm_name = slugify(data.get("team_name")) # VM Name
         vm_id = data.get("vm_id") # VM Identifier
         vm_ip = data.get("vm_ip") # VM IP Adress
         student_emails = data.get("student_emails") # String of student mails, separated by ','
         has_shared_user = data.get("has_shared_user") # Tell if the vm has a shared user
         is_container = data.get("is_container") # Tell if the vm is a container
 
+        type = db.VMType.lxc if is_container else db.VMType.vm
+
         # Create vm config in the database
-        await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{team_name}'...")
+        await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{vm_name}'...")
         db.create_vm(db_session,
-                     db.VMConfig(name=team_name, pve_id=vm_id,
-                                 ip=vm_ip, has_shared_user=has_shared_user,
-                                 is_container=is_container),
+                     db.VMConfig(name=vm_name,
+                                 pve_id=vm_id,
+                                 ip=vm_ip,
+                                 has_shared_user=has_shared_user,
+                                 type=type),
                      student_emails)
 
-        await websocket.send_text(f"[ADD] Successfully Created VM in DB.")
-
-        # Run provider playbook
-        if is_container:
-            await ansible.run_provide_container(db_session, websocket, vm_id)
-        else:
-            await ansible.run_provide_vm(db_session, websocket, vm_id)
-
-        await websocket.send_text(f"[ADD] Successfully Provide VM.")
-
-        # Run provisioner playbook
-        await ansible.run_provision(db_session, websocket, vm_id, has_shared_user)
-
-        await websocket.send_text(f"[ADD] Successfully Provision VM.")
-
-        # Register vm guacamole access
-        if has_shared_user:
-            await guacamole.register_guacamole_access_single_user(db_session, websocket, vm_id)
-        else:
-            # await guacamole.register_guacamole_access(websocket, vm_id)
-            pass
-
-        await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
+        await websocket.send_text(f"[VM] [ADD] Successfully Created VM in DB.")
     except WebSocketDisconnect:
-        logging.info("Client disconnected during deployment execution.")
-    except ValueError as ve:
-        await websocket.send_text(f"[ADD] Error when registring the vm: {str(ve)}")
-        logging.error(f"[ADD] Error when registring the vm: {str(ve)}")
-    except TypeError as te:
-        await websocket.send_text(f"[ADD] Type Error: {str(te)}")
-        logging.error(f"[ADD] Type Error: {str(te)}")
+        logging.info("[VM] [ADD] Client disconnected during deployment execution.")
     finally:
         try:
             await websocket.close()
@@ -126,6 +187,24 @@ async def add_config(websocket: WebSocket,
             # Socket already closed
             pass        
 
+@app.get("/edit/{config_id}", response_class=HTMLResponse)
+async def get_edit_page(request: Request,
+                        config_id: int,
+                        admin_user: str = Depends(require_admin),
+                        db_session: Session = Depends(db.get_db)):
+    stmt = select(db.VMConfig).order_by(db.VMConfig.id.desc())
+    config = db.get_vm_byid(db_session, config_id)
+
+    if not config:
+        logging.error(f"[VM] [EDIT] No VM Matched with the config id '{config_id}'")
+        return
+
+    return templates.TemplateResponse(
+        request=request,
+        name="edit.html",
+        context={"config": config, "students": config.users}
+    )
+        
 @app.websocket("/ws/edit/{config_id}")
 async def edit_config(config_id: int,
                       websocket: WebSocket,

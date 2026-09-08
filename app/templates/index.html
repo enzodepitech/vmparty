@@ -1,137 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VMParty</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/vm_status.css') }}">
+  </head>
 
-<body class="bg-slate-800 m-10 font-sans">
+  <body class="bg-slate-800 m-10 font-sans">
     <div class="max-w-6xl mx-auto">
-        <h1 class="text-5xl font-bold font-mono text-gray-100 m-10">VMParty</h1>
+      <h1 class="text-5xl font-bold font-mono text-gray-100 m-10">VMParty</h1>
 
-        <!-- Add Configuration Card -->
-        <div class="bg-white shadow-md mb-8">
-            <h2 class="text-xl font-semibold text-white bg-slate-900 p-6">Add Team Configuration</h2>
-            <form id="addForm" onsubmit="startProvide(event)" class="flex gap-4 p-6">
-                <input type="text" name="team_name" placeholder="Team Name" required
-                    class="flex-1 border p-2 rounded w-full">
-                <input type="number" name="vm_id" placeholder="VM ID (180 to 200)" min="180" max="200" required
-                    class="flex-1 max-w-20 border p-2 rounded w-full">
-                <input type="text" name="vm_ip" placeholder="VM IP Address (192.168.10.<VMID>)" required
-                    class="flex-1 border p-2 rounded w-full">
-                <div
-                    class="flex-1 min-w-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded border focus-within:ring-2 focus-within:ring-indigo-500">
-                    <div id="email-tags-container" class="flex flex-wrap gap-1.5 items-center"></div>
+      <!-- Add Configuration Card -->
+      <div class="bg-white shadow-md mb-8">
+        <h2 class="text-xl font-semibold text-white bg-slate-900 p-6">Add Team Configuration</h2>
+        <form id="addForm" onsubmit="startAdd(event)" class="flex gap-4 p-6">
+          <input type="text" name="team_name" placeholder="Team Name" required
+                 class="flex-1 border p-2 rounded w-full">
+          <input type="number" name="vm_id" placeholder="VM ID (180 to 200)" min="180" max="200" required
+                 class="flex-1 max-w-20 border p-2 rounded w-full">
+          <input type="text" name="vm_ip" placeholder="VM IP Address (192.168.10.<VMID>)" required
+                 class="flex-1 border p-2 rounded w-full">
+          <div
+              class="flex-1 min-w-0 flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded border focus-within:ring-2 focus-within:ring-indigo-500">
+            <div id="email-tags-container" class="flex flex-wrap gap-1.5 items-center"></div>
 
-                    <input type="email" id="student-email-input" placeholder="Type email + Enter"
-                        class="flex-1 min-w-[140px] bg-transparent placeholder-slate-400 text-sm focus:outline-none" />
+            <input type="email" id="student-email-input" placeholder="Type email + Enter"
+                   class="flex-1 min-w-[140px] bg-transparent placeholder-slate-400 text-sm focus:outline-none" />
 
-                    <!-- Hidden input for form submission -->
-                    <input type="hidden" id="students-hidden-input" name="student_emails" value="" />
-                </div>
-                <div>
-                  <input type="checkbox" id="shared_user" name="shared_user" checked />
-                  <label for="shared_user">Shared User</label>
-                </div>
-                <div>
-                  <input type="checkbox" id="is_container" name="is_container" checked />
-                  <label for="is_container">Container</label>
-                </div>
-                <button type="submit" id="add-config-btn" aria-label="Add new configuration"
-                        title="Add new configuration"
-                        class="flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-            </form>
-        </div>
+            <!-- Hidden input for form submission -->
+            <input type="hidden" id="students-hidden-input" name="student_emails" value="" />
+          </div>
+          <div>
+            <input type="checkbox" id="shared_user" name="shared_user" checked />
+            <label for="shared_user">Shared User</label>
+          </div>
+          <div>
+            <input type="checkbox" id="is_container" name="is_container" checked />
+            <label for="is_container">Container</label>
+          </div>
+          <button type="submit" id="add-config-btn" aria-label="Add new configuration"
+                  title="Add new configuration"
+                  class="flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+        </form>
+      </div>
 
-        <!-- Configurations Table -->
-        <div class="bg-white shadow-md overflow-hidden mb-8">
-            <h2 class="text-xl font-semibold text-white bg-slate-900 p-6"> Current Configuration </h2>
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-900 text-white">
-                        <th class="p-4">Team</th>
-                        <th class="p-4">VM ID</th>
-                        <th class="p-4">VM IP</th>
-                        <th class="p-4">Student Members</th>
-                        <th class="p-4 text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="config-table-body">
-                    {% for config in configs %}
-                    <tr class="border-b hover:bg-gray-50">
-                            <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.name }} </p>
-                            </td>
-                            <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.pve_id }} </p>
-                            </td>
-                            <td class="p-4">
-                                <p class="p-1 w-full"> {{ config.ip }} </p>
-                            </td>
-                            <td>
-                              <ul>
-                                {% for student in config.users %}
-                                  <li>{{ student.mail }}</li>
-                                {% endfor %}
-                              </ul>
-                            </td>
-                            <td class="flex gap-2 justify-center items-center p-4">
-                              <button class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-500" onclick="openEdit({{ config.id }})">Edit</button>
-                              <form onsubmit="startDelete(event, {{config.id}})">
-                                  <button type="submit"
-                                          class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Delete</button>
-                                </form>
-                            </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                      <td colspan="5" class="p-4 text-center text-gray-500">No configurations found. Add one above!
-                      </td>
-                    </tr>
+      <!-- Configurations Table -->
+      <div class="bg-white shadow-md overflow-hidden mb-8">
+        <h2 class="text-xl font-semibold text-white bg-slate-900 p-6"> Current Configuration </h2>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-900 text-white">
+              <th class="p-4">Team</th>
+              <th class="p-4">VM ID</th>
+              <th class="p-4">VM IP</th>
+              <th class="p-4">Student Members</th>
+              <th class="p-4 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="config-table-body">
+            {% for config in configs %}
+              <tr class="{{  config.status.value }} border-b hover:bg-gray-50">
+                <td class="p-4">
+                  <p class="p-1 w-full"> {{ config.name }} </p>
+                </td>
+                <td class="p-4">
+                  <p class="p-1 w-full"> {{ config.pve_id }} </p>
+                </td>
+                <td class="p-4">
+                  <p class="p-1 w-full"> {{ config.ip }} </p>
+                </td>
+                <td>
+                  <ul>
+                    {% for student in config.users %}
+                      <li>{{ student.mail }}</li>
                     {% endfor %}
-                </tbody>
-            </table>
+                  </ul>
+                </td>
+                <td class="flex gap-2 justify-center items-center p-4">
+                  <!-- Provide Button (Cube icon) -->
+                  <button type="button" 
+                          onclick="startProvide({{ config.id }})"
+                          title="Provide VM"
+                          class="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                    </svg>
+                  </button>
+
+                  <!-- Provision Button (Cog/Settings icon) -->
+                  <button type="button" 
+                          onclick="startProvision({{ config.id }})"
+                          title="Provision with Ansible"
+                          class="action-btn bg-indigo-600 text-white p-2 rounded hover:bg-indigo-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
+
+                  <!-- Register Button (Clipboard check icon) -->
+                  <button type="button" 
+                          onclick="startRegister({{ config.id }})"
+                          title="Register Server"
+                          class="action-btn bg-indigo-600 text-white p-2 rounded hover:bg-indigo-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0118 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3l1.5 1.5 3-3.75" />
+                    </svg>
+                  </button>
+
+                  <!-- Edit Button (Pencil icon) -->
+                  <button type="button" 
+                          onclick="openEdit({{ config.id }})" 
+                          title="Edit Configuration"
+                          class="action-btn bg-indigo-600 text-white p-2 rounded hover:bg-indigo-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
+                    </svg>
+                  </button>
+
+                  <!-- Delete Button (Trash icon) -->
+                  <button type="button" 
+                          onclick="startDelete({{ config.id }})"
+                          title="Delete VM"
+                          class="action-btn bg-red-600 text-white p-2 rounded hover:bg-red-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="p-4 text-center text-gray-500">No configurations found. Add one above!
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Ansible Execution & Live Log Container -->
+      <div class="mx-auto my-6 bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden font-mono text-sm">
+
+        <!-- Actions bar -->
+        <div
+            class="flex items-center justify-between px-4 py-3 bg-slate-900 border-t border-slate-800 border-b border-slate-800">
+          <div class="flex gap-4 p-2">
+            <button onclick="clearLogs()"
+                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs rounded-md transition-colors cursor-pointer">
+              Clear Console
+            </button>
+          </div>
+          <div>
+            <span id="status-badge" class="p-2 rounded-full bg-slate-800 text-slate-400 font-medium">Idle</span>
+          </div>
         </div>
 
-        <!-- Ansible Execution & Live Log Container -->
-        <div class="mx-auto my-6 bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden font-mono text-sm">
-
-            <!-- Actions bar -->
-            <div
-                class="flex items-center justify-between px-4 py-3 bg-slate-900 border-t border-slate-800 border-b border-slate-800">
-              <div class="flex gap-4 p-2">
-                    <button onclick="clearLogs()"
-                            class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs rounded-md transition-colors cursor-pointer">
-                        Clear Console
-                    </button>
-              </div>
-              <div>
-                <span id="status-badge" class="p-2 rounded-full bg-slate-800 text-slate-400 font-medium">Idle</span>
-              </div>
-            </div>
-
-            <!-- Terminal Output Area -->
-            <div id="terminal-logs"
-                class="h-96 p-4 overflow-y-auto bg-slate-950/50 text-slate-200 font-mono text-xs leading-relaxed select-text">
-                <p class="text-slate-500">// Logs will stream here live when deployment is triggered...</p>
-            </div>
+        <!-- Terminal Output Area -->
+        <div id="terminal-logs"
+             class="h-96 p-4 overflow-y-auto bg-slate-950/50 text-slate-200 font-mono text-xs leading-relaxed select-text">
+          <p class="text-slate-500">// Logs will stream here live when deployment is triggered...</p>
         </div>
+      </div>
     </div>
 
     <div id="modal-container"></div>
-      
+    
     <script src="{{ url_for('static', path='js/edit.js') }}"></script>
     <script src="{{ url_for('static', path='js/ansibleConsole.js') }}"></script>
     <script src="{{ url_for('static', path='js/multipleStudentWrapper.js') }}"></script>
-</body>
+  </body>
 
 </html>

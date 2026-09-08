@@ -1,33 +1,28 @@
 let socket = null;
 let processRunning = false;
+let processExit
 
 // -----------------------------------------------------
 // Action functions
 // -----------------------------------------------------
 
-function startDelete(event, configId) {
-    if (event) event.preventDefault();
-
+function startDelete(configId) {
     startWebSocketProcess(`/ws/delete/${configId}`);
 }
 
-function startEdit(event, configId) {
-    if (event) event.preventDefault();
-    
-    const editForm = document.getElementById("editForm");
-    const formData = new FormData(editForm);
-    
-    const payload = {
-        team_name: formData.get("name"),
-        vm_id: parseInt(formData.get("vm_id")),
-        vm_ip: formData.get("vm_ip"),
-        student_emails: getCombinedEmails()
-    };
-    
-    startWebSocketProcess(`/ws/edit/${configId}`, payload);
+function startProvide(configId) {
+    startWebSocketProcess(`/ws/vm/provide/${configId}`);
 }
 
-function startProvide(event) {
+function startProvision(configId) {
+    startWebSocketProcess(`/ws/vm/provision/${configId}`);
+}
+
+function startRegister(configId) {
+    startWebSocketProcess(`/ws/vm/register/guacamole/${configId}`);
+}
+
+function startAdd(event) {
     if (event) event.preventDefault();
     const editForm = document.getElementById("addForm");
     const formData = new FormData(editForm);
@@ -42,6 +37,21 @@ function startProvide(event) {
     };
     
     startWebSocketProcess("/ws/add", payload);
+    window.location.reload();
+}
+
+function startEdit(configId) {
+    const editForm = document.getElementById("editForm");
+    const formData = new FormData(editForm);
+    
+    const payload = {
+        team_name: formData.get("name"),
+        vm_id: parseInt(formData.get("vm_id")),
+        vm_ip: formData.get("vm_ip"),
+        student_emails: getCombinedEmails()
+    };
+    
+    startWebSocketProcess(`/ws/edit/${configId}`, payload);
 }
 
 // -----------------------------------------------------
@@ -54,10 +64,11 @@ function startWebSocketProcess(url, params = {}) {
     
     if (processRunning) {
         console.log("A Web Socket Process is already running...");
-        alert("A Web Socket Process is already running. Wait until finish.")
-        return;
+        alert("A Web Socket Process is already running. Wait until finish.");
+        return false;
     }
     processRunning = true;
+    setButtonsState(true);
     
     const terminal = document.getElementById("terminal-logs");
     const statusBadge = document.getElementById("status-badge");
@@ -105,20 +116,9 @@ function startWebSocketProcess(url, params = {}) {
         statusBadge.textContent = "Finished";
         statusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium";
         appendLogLine("[System] Connection closed.", "text-slate-500");
-
-        // Reload configurations
-        const response = fetch(window.location.href);
-        const html = response.text();
-        
-        // Parse the HTML and extract the updated table body
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const newTableBody = doc.getElementById('config-table-body').innerHTML;
-        
-        // Swap out the old rows instantly without breaking the WS connection
-        document.getElementById('config-table-body').innerHTML = newTableBody;
         
         processRunning = false;
+        setButtonsState(false);
     };
 }
 
@@ -136,4 +136,18 @@ function appendLogLine(text, colorClass = "text-slate-300") {
 function clearLogs() {
     const terminal = document.getElementById("terminal-logs");
     terminal.innerHTML = '<span class="text-slate-500">// Logs cleared. Ready to deploy...</span>';
+}
+
+function setButtonsState(isDisabled) {
+    // Select all buttons with the 'action-btn' class
+    const buttons = document.querySelectorAll('.action-btn');
+    
+    buttons.forEach(btn => {
+        btn.disabled = isDisabled;
+        if (isDisabled) {
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    });
 }

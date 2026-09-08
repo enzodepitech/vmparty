@@ -1,9 +1,11 @@
 import logging
 import os
-from typing import Optional, Tuple, List
+import enum
+
+from typing import List
 
 from app.core.security import create_user_password
-from sqlalchemy import create_engine, select, Table, Column, ForeignKey
+from sqlalchemy import create_engine, select, Table, Column, ForeignKey, Enum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, relationship
 from sqlalchemy.exc import IntegrityError
 
@@ -33,6 +35,17 @@ user_vm_association = Table(
 # ---------------------------------------------------------
 # Data Models
 # ---------------------------------------------------------
+class VMType(int, enum.Enum):
+    lxc = 0
+    vm = 1
+
+class VMStatus(str, enum.Enum):
+    created = "created"
+    deployed = "deployed"
+    provisioned = "provisioned"
+    edited = "edited"
+    other = "other"
+
 class VMConfig(Base):
     __tablename__ = "vm_configs"
     
@@ -41,10 +54,17 @@ class VMConfig(Base):
     pve_id: Mapped[int] = mapped_column(unique=True)
     ip: Mapped[str] = mapped_column(unique=True)
     has_shared_user: Mapped[bool]
-    is_container: Mapped[bool]
     guac_conn_id: Mapped[int] = mapped_column(unique=True, default=0)
 
-    # Replaces 'student_emails' string
+    type: Mapped[VMType] = mapped_column(
+        Enum(VMType)
+    )
+    
+    status: Mapped[VMStatus] = mapped_column(
+        Enum(VMStatus), 
+        default=VMStatus.created
+    )
+
     users: Mapped[List["VMUser"]] = relationship(
         secondary=user_vm_association, 
         back_populates="vms"
@@ -73,6 +93,10 @@ def init_db():
     # Creates all tables based on the models above if they don't exist
     Base.metadata.create_all(engine)
 
+# --------------------------------------------------
+# Getters
+# --------------------------------------------------
+    
 def get_db():
     with Session(engine) as session:
         yield session
@@ -86,7 +110,32 @@ def get_vm(db_session: Session, pve_id: int) -> VMConfig | None:
 def get_vm_byid(db_session: Session, config_id: int) -> VMConfig | None:
     return db_session.scalar(select(VMConfig).where(VMConfig.id == config_id))
 
+# --------------------------------------------------
+# Creation
+# --------------------------------------------------
+
+def create_user(db_session: Session, mail: str):
+    """
+    Create a VMUser in the database
+    """
+    username = sanitize_email_to_username(mail)
+    user = VMUser(mail=mail, username=username, password=create_user_password())
+    db_session.add(user)
+
+    try:
+        db_session.commit()
+        logging.info(f"User '{mail}' successfully created.")
+    except IntegrityError:
+        db_session.rollback()
+        logging.error("User mail must be unique.")
+        raise ValueError("Cannot add VM user: user mail must be unique")
+    
+    return user
+
 def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
+    """
+    Create a VM (VMConfig) in the database
+    """
     db_session.add(vm_config)
 
     unique_emails = set(student_emails.split(','))
@@ -111,7 +160,11 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
         db_session.rollback()
         logging.error("VM ID must be unique.")
         raise ValueError("Cannot add VM: VM ID must be unique")
-        
+
+# --------------------------------------------------
+# Update
+# --------------------------------------------------
+    
 def update_connection_id_vm(db_session: Session, vm_id: int, conn_id: int):
     vm = db_session.scalar(select(VMConfig).where(VMConfig.vm_id == vm_id))
     if vm:
@@ -121,6 +174,25 @@ def update_connection_id_vm(db_session: Session, vm_id: int, conn_id: int):
     else:
         logging.warning(f"No VM found with ID '{vm_id}' to update.")
 
+def vm_update_status(db: Session, config_id: int, new_status: VMStatus):
+    vm = db.get(VMConfig, config_id)
+    if vm:
+        vm.status = new_status
+        db.commit()
+        
+def vm_mark_deployed(db_session: Session, vm_id: int):
+    vm_update_status(db_session, vm_id, VMStatus.deployed)
+
+def vm_mark_configured(db_session: Session, vm_id: int):
+    vm_update_status(db_session, vm_id, VMStatus.provisioned)
+
+def vm_mark_edited(db_session: Session, vm_id: int):
+    vm_update_status(db_session, vm_id, VMStatus.edited)
+    
+# --------------------------------------------------
+# Deletion
+# --------------------------------------------------
+        
 def delete_vm(db_session: Session, config_id: int) -> bool:
     vm = db_session.get(VMConfig, config_id)
     if not vm:
