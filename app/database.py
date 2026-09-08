@@ -71,7 +71,7 @@ class VMConfig(Base):
         back_populates="vms"
     )
 
-    guac_users: Mapped[List[str]] = mapped_column(JSON)
+    guac_users: Mapped[list[str]] = mapped_column(JSON, default=list)
 
 
 class VMUser(Base):
