@@ -37,7 +37,6 @@ function startAdd(event) {
     };
     
     startWebSocketProcess("/ws/add", payload);
-    window.location.reload();
 }
 
 function startEdit(configId) {
