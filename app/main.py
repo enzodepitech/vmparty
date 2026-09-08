@@ -128,10 +128,10 @@ async def register_in_guacamole(config_id: int,
 
         # Register vm guacamole access
         if vm_data.has_shared_user:
-            await guacamole.register_guacamole_access_single_user(db_session, websocket, vm_data.pve_id)
+            await guacamole.register_guacamole_access_single_user(db_session, websocket, config_id)
         else:
             # TODO: register for multiple users
-            # await guacamole.register_guacamole_access(websocket, vm_id)
+            # await guacamole.register_guacamole_access(websocket, config_id)
             pass
 
         await websocket.send_text(f"[ADD] Successfully Register VM to Guacamole.")
