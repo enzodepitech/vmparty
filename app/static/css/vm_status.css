@@ -1,24 +1,29 @@
 .created {
-    // background: #b8c7cc;
-    // background: linear-gradient(90deg, rgba(184, 199, 204, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    /* background: #b8c7cc;
+       background: linear-gradient(90deg, rgba(184, 199, 204, 1) 0%, rgba(255, 255, 255, 0) 100%);     */
 }
 
 .deployed {
-    background: #2a839b;
-    background: linear-gradient(90deg, rgba(42, 131, 155, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    background: #b8c7cc;
+    background: linear-gradient(90deg, rgba(184, 199, 204, 1) 0%, rgba(255, 255, 255, 0) 100%);    
 }
 
 .provisioned {
-    background: #68bd70;
-    background: linear-gradient(90deg, rgba(104, 189, 112, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    background: #d7ebf7;
+    background: linear-gradient(90deg, rgba(215, 235, 247, 1) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .edited {
-    background: #e8df92;
-    background: linear-gradient(90deg, rgba(232, 223, 146, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    background: #f7f3d7;
+    background: linear-gradient(90deg, rgba(247, 243, 215, 1) 0%, rgba(255, 255, 255, 0) 100%);
+}
+
+.registered {
+    background: #d7f7de;
+    background: linear-gradient(90deg, rgba(215, 247, 222, 1) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .other {
-    background: #9b2a2a;
-    background: linear-gradient(90deg,rgba(155, 42, 42, 1) 0%, rgba(255, 255, 255, 0) 100%);
+    background: #f7dbd7;
+    background: linear-gradient(90deg, rgba(247, 219, 215, 1) 0%, rgba(255, 255, 255, 0) 100%);
 }
