@@ -4,11 +4,14 @@ import os
 import logging
 
 from fastapi import WebSocket, WebSocketDisconnect
-
 from sqlalchemy.orm import Session
 
-from app.core.utils import sanitize_email_to_username, DEFAULT_USERNAME, slugify
+from app.core.utils import slugify
 import app.database as db
+
+# ----------------------------
+# Action: Delete
+# ----------------------------
 
 async def run_delete(db_session: Session, websocket: WebSocket, id):
     vm_data = db.get_vm_byid(db_session, id)
@@ -55,9 +58,14 @@ async def run_delete(db_session: Session, websocket: WebSocket, id):
         await websocket.send_text(f"[DELETE] Error executing playbook: {str(e)}")
         raise
 
+# ----------------------------
+# Action: Edit
+# ----------------------------
+    
 async def run_edit(
     db_session: Session,
     websocket: WebSocket,
+    config_id: int,
     vmid: int,
     new_team_name: str,
     students_to_add: list,
@@ -125,6 +133,7 @@ async def run_edit(
         await process.wait()
         
         if process.returncode == 0:
+            db.vm_update_status(db_session, config_id, db.VMStatus.edited)
             await websocket.send_text("[EDIT] Successfully Updated VM via Ansible!")
             return True
         else:
@@ -135,16 +144,21 @@ async def run_edit(
         await websocket.send_text(f"[EDIT] Critical Error: {str(e)}")
         return False
 
-async def run_provide_container(db_session: Session, websocket: WebSocket, vm_id):
-    await run_provide(db_session, websocket, vm_id, "ansible/01_provider.yml")
-
-async def run_provide_vm(db_session: Session, websocket: WebSocket, vm_id):
-    await run_provide(db_session, websocket, vm_id, "ansible/01_provider_vm.yml")
+# ----------------------------
+# Action: Provide
+# ----------------------------
     
-async def run_provide(db_session: Session, websocket: WebSocket, vm_id: int, ansible_playbook_path: str):
-    vm_data = db.get_vm(db_session, vm_id)
+async def run_provide_container(db_session: Session, websocket: WebSocket, config_id):
+    await run_provide(db_session, websocket, config_id, "ansible/01_provider.yml")
+
+async def run_provide_vm(db_session: Session, websocket: WebSocket, config_id):
+    await run_provide(db_session, websocket, config_id, "ansible/01_provider_vm.yml")
+    
+async def run_provide(db_session: Session, websocket: WebSocket, config_id: int, ansible_playbook_path: str):
+    vm_data = db.get_vm_byid(db_session, config_id)
     if not vm_data:
-        logging.error(f"No vm corresponding with id {vm_id}.")
+        websocket.send_text(f"[VM] [PROVIDE] No VM corresponding with id {config_id}.")
+        logging.error(f"[VM] [PROVIDE] No VM corresponding with id {config_id}.")
         return False
     
     # Deploy VMs via Ansible
@@ -167,7 +181,7 @@ async def run_provide(db_session: Session, websocket: WebSocket, vm_id: int, ans
             env=env
         )
 
-        await websocket.send_text(f"[PROVIDE] Starting Ansible Providing '{vm_id}:{vm_data.name}({vm_data.ip})'...")
+        await websocket.send_text(f"[VM] [PROVIDE] Starting Ansible Providing '{vm_data.pve_id}:{vm_data.name}({vm_data.ip})'...")
 
         while True and process.stdout is not None:
             line = await process.stdout.readline()
@@ -178,15 +192,20 @@ async def run_provide(db_session: Session, websocket: WebSocket, vm_id: int, ans
         await process.wait()
 
         if process.returncode == 0:
-            await websocket.send_text(f"[PROVIDE] Successfully provided VM.")
+            db.vm_update_status(db_session, config_id, db.VMStatus.deployed)
+            await websocket.send_text(f"[VM] [PROVIDE] Successfully provided VM.")
         else:
-            await websocket.send_text(f"[PROVIDE] Deployment Failed (Exit Code {process.returncode})")
+            await websocket.send_text(f"[VM] [PROVIDE] Deployment Failed (Exit Code {process.returncode})")
 
     except WebSocketDisconnect:
-        logging.info("[PROVIDE] Client disconnected during deployment execution.")
+        logging.info("[VM] [PROVIDE] Client disconnected during deployment execution.")
     except Exception as e:
-        await websocket.send_text(f"[PROVIDE] Error executing playbook: {str(e)}")
+        await websocket.send_text(f"[VM] [PROVIDE] Error executing playbook: {str(e)}")
 
+# ----------------------------
+# Action: Provision
+# ----------------------------
+        
 async def run_provision(db_session: Session, websocket: WebSocket, config_id: int):
     """
     """
@@ -254,6 +273,7 @@ async def run_provision(db_session: Session, websocket: WebSocket, config_id: in
         await process.wait()
 
         if process.returncode == 0:
+            db.vm_update_status(db_session, config_id, db.VMStatus.provisioned)
             await websocket.send_text("[PROVISION] Successfully provisioned VM.")
         else:
             await websocket.send_text(f"[PROVISION] Provision Failed (Exit Code {process.returncode}) ---")

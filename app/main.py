@@ -260,6 +260,7 @@ async def edit_config(config_id: int,
             ansible_success = await ansible.run_edit(
                 db_session,
                 websocket,
+                config_id=config_id,
                 vmid=vm_id,
                 new_team_name=team_name,
                 students_to_add=to_add,

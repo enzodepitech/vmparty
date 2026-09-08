@@ -163,7 +163,8 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
 
     for user in list(vm_data.users):
         register_new_user(db_session, guac, user.mail, vm_data.guac_conn_id)
-        
+
+    db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
     await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
     
 async def register_guacamole_access_multiple_users(db_session: Session, websocket: WebSocket, vm_id):

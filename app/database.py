@@ -43,6 +43,7 @@ class VMStatus(str, enum.Enum):
     created = "created"
     deployed = "deployed"
     provisioned = "provisioned"
+    registered = "registered"
     edited = "edited"
     other = "other"
 
