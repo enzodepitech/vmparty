@@ -153,6 +153,7 @@ async def add_config(websocket: WebSocket,
     await websocket.accept()
 
     try:
+        logging.info("[ADD] Fetching data from front...")
         await websocket.send_text(f"[ADD] Fetching data from front...")
         
         # Fetch data
@@ -169,6 +170,8 @@ async def add_config(websocket: WebSocket,
 
         # Create vm config in the database
         await websocket.send_text(f"[ADD] Starting registring VM '{vm_id}:{vm_name}'...")
+        logging.info(f"[ADD] Starting registring VM '{vm_id}:{vm_name}'...")
+
         db.create_vm(db_session,
                      db.VMConfig(name=vm_name,
                                  pve_id=vm_id,
@@ -178,6 +181,7 @@ async def add_config(websocket: WebSocket,
                      student_emails)
 
         await websocket.send_text(f"[VM] [ADD] Successfully Created VM in DB.")
+        logging.info(f"[VM] [ADD] Successfully Created VM in DB.")
     except WebSocketDisconnect:
         logging.info("[VM] [ADD] Client disconnected during deployment execution.")
     finally:
