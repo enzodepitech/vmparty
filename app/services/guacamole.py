@@ -111,6 +111,7 @@ def register_new_user(db_session: Session, guac: Guacamole, email: str, connecti
             raise e
 
     # Assign connection
+    logging.info(f"[GUACAMOLE] Assign connection for user '{email}' -> '{connection_id}'")
     guac.users.assign_connection(
         username=email,
         permission="READ",
