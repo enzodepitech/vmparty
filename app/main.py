@@ -78,9 +78,9 @@ async def provide(config_id: int,
         
         # Run provider playbook
         if vm_data.type == db.VMType.lxc:
-            await ansible.run_provide_container(db_session, websocket, vm_data.pve_id)
+            await ansible.run_provide_container(db_session, websocket, config_id)
         else:
-            await ansible.run_provide_vm(db_session, websocket, vm_data.pve_id)
+            await ansible.run_provide_vm(db_session, websocket, config_id)
 
         await websocket.send_text(f"[ADD] Successfully Provided VM {vm_data.name}.")
     except WebSocketDisconnect:
@@ -196,7 +196,6 @@ async def get_edit_page(request: Request,
                         config_id: int,
                         admin_user: str = Depends(require_admin),
                         db_session: Session = Depends(db.get_db)):
-    stmt = select(db.VMConfig).order_by(db.VMConfig.id.desc())
     config = db.get_vm_byid(db_session, config_id)
 
     if not config:
@@ -229,7 +228,7 @@ async def edit_config(config_id: int,
         student_emails = data.get("student_emails")
 
         await websocket.send_text("[EDIT] Fetching old VM configuration...")
-        old_config = db.get_vm(db_session, vm_id)
+        old_config = db.get_vm_byid(db_session, config_id)
     
         if not old_config:
             await websocket.send_text("[EDIT] Error: no configuration matched found...")

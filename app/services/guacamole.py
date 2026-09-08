@@ -121,7 +121,7 @@ def register_new_user(db_session: Session, guac: Guacamole, email: str, connecti
 # Connection
 # --------------------------------------------
     
-async def register_guacamole_access_single_user(db_session: Session, websocket: WebSocket, vm_id):
+async def register_guacamole_access_single_user(db_session: Session, websocket: WebSocket, config_id: int):
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
         hostname=GUACAMOLE_URL,
@@ -131,7 +131,7 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
 
     await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
 
-    vm_data = db.get_vm(db_session, vm_id)
+    vm_data = db.get_vm_byid(db_session, config_id)
     if not vm_data:
         return
 
@@ -167,7 +167,7 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
     db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
     await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
     
-async def register_guacamole_access_multiple_users(db_session: Session, websocket: WebSocket, vm_id):
+async def register_guacamole_access_multiple_users(db_session: Session, websocket: WebSocket, config_id):
     # Authenticate to Guacamole REST API via admin account
     guac = Guacamole(
         hostname=GUACAMOLE_URL,
@@ -177,7 +177,7 @@ async def register_guacamole_access_multiple_users(db_session: Session, websocke
 
     await websocket.send_text("[GUACAMOLE] Successfully connected to guacamole.")
 
-    vm_data = db.get_vm(db_session, vm_id)
+    vm_data = db.get_vm_byid(db_session, config_id)
     if not vm_data:
         return
 

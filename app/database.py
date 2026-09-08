@@ -105,9 +105,6 @@ def get_db():
 def get_user(db_session: Session, mail: str) -> VMUser | None:
     return db_session.scalar(select(VMUser).where(VMUser.mail == mail))
     
-def get_vm(db_session: Session, pve_id: int) -> VMConfig | None:
-    return db_session.scalar(select(VMConfig).where(VMConfig.pve_id == pve_id))
-
 def get_vm_byid(db_session: Session, config_id: int) -> VMConfig | None:
     return db_session.scalar(select(VMConfig).where(VMConfig.id == config_id))
 
