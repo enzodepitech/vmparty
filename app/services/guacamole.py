@@ -112,11 +112,14 @@ def register_new_user(db_session: Session, guac: Guacamole, email: str, connecti
 
     # Assign connection
     logging.info(f"[GUACAMOLE] Assign connection for user '{email}' -> '{connection_id}'")
-    guac.users.assign_connection(
-        username=email,
-        permission="READ",
-        connection_id=connection_id,
-    )
+    try:
+        guac.users.assign_connection(
+            username=email,
+            permission="READ",
+            connection_id=str(connection_id),
+        )
+    except HTTPError as e:
+        print(f"[GUACAMOLE] Failed to assign connection in Guacamole: {str(e)}")
 
 # --------------------------------------------
 # Connection
