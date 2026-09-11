@@ -176,7 +176,7 @@ def create_vm(db_session: Session, vm_config: VMConfig, student_emails: str):
 def update_connection_id_vm(db_session: Session, config_id: int, conn_id: int):
     vm = db_session.scalar(select(VMConfig).where(VMConfig.id == config_id))
     if vm:
-        vm.conn_id = conn_id
+        vm.guac_conn_id = conn_id
         db_session.commit()
         logging.info(f"Updated connection ID for VM '{config_id}'.")
     else:
