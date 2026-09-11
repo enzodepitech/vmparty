@@ -107,6 +107,8 @@ def register_new_user(db_session: Session, guac: Guacamole, email: str, connecti
             new_user = deepcopy(USER_PAYLOAD_TEMPLATE)
             new_user["username"] = email
             guac.users.create(new_user)
+        elif e.response.status_code == 500:
+            logging.info(f"[GUACAMOLE] Error 500: {str(e)}")
         else:
             raise e
 
@@ -169,7 +171,7 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
         await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
         raise ValueError(f"Connection {vm_data.pve_id} already exists in guacamole. Please delete it.")
 
-    for guac_user_mail in list(vm_data.guac_users):
+    for guac_user_mail in vm_data.guac_users:
         register_new_user(db_session, guac, guac_user_mail, vm_data.guac_conn_id)
 
     db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
