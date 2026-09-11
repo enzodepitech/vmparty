@@ -48,12 +48,13 @@ async def read_dashboard(
     stmt = select(db.VMConfig).order_by(db.VMConfig.id.desc())
     configs = db_session.scalars(stmt).all()
 
-    logging.debug(configs)
+    guac_users_raw = configs.guac_users
+    guac_users = [guac_user.strip() for guac_user in guac_users_raw.split(",")]
 
     return templates.TemplateResponse(
         request=request,
         name="index.html",
-        context={"configs": configs}
+        context={"configs": configs, "users": guac_users}
     )
 
 # ----------------------------------------------------
@@ -222,9 +223,9 @@ async def edit_config(config_id: int,
         await websocket.send_text("[EDIT] Fetching data...")
         data = await websocket.receive_json()
         
-        team_name = data.get("team_name")
-        vm_id = data.get("vm_id")
-        vm_ip = data.get("vm_ip")
+        # team_name = data.get("team_name")
+        # vm_id = data.get("vm_id")
+        # vm_ip = data.get("vm_ip")
         student_emails = data.get("student_emails")
 
         await websocket.send_text("[EDIT] Fetching old VM configuration...")
@@ -232,45 +233,18 @@ async def edit_config(config_id: int,
     
         if not old_config:
             await websocket.send_text("[EDIT] Error: no configuration matched found...")
+            logging.error("[EDIT] Error: no configuration matched found...")
             raise HTTPException(status_code=404, detail="No configuration matched")
 
         # Get students to add and students to remove
         await websocket.send_text("[EDIT] Processing students to add and remove configuration...")
-        old_list = set(filter(None, [s.strip() for s in list(old_config.users)]))
-        new_list = set(filter(None, [s.strip() for s in list(old_config.users)]))
+        old_list = set(filter(None, [s.strip() for s in old_config.guac_users.split(',')]))
+        new_list = set(filter(None, [s.strip() for s in student_emails.split(',')]))
         
         to_add = list(new_list - old_list) # Students to add
         to_remove = list(old_list - new_list) # Students to remove
 
-        # Register new students and delete olds
-        if not old_config.has_shared_user:
-            await websocket.send_text("[EDIT] Creating students to add in DataBase...")
-            for mail in to_add:
-                # db.create_user(mail, create_user_password())
-                pass
-
-            await websocket.send_text("[EDIT] Deleting students to remove from DataBase...")
-            for mail in to_remove:
-                # db.delete_user(mail)
-                pass
-
         try: 
-            # Edit server VM name & Update Linux users
-            if not old_config.has_shared_user:
-                await websocket.send_text("[EDIT] Ansible updating VM on server...")
-                ansible_success = await ansible.run_edit(
-                    db_session,
-                    websocket,
-                    config_id=config_id,
-                    vmid=vm_id,
-                    new_team_name=team_name,
-                    students_to_add=to_add,
-                    students_to_remove=to_remove
-                )
-
-                if not ansible_success:
-                    return False
-
             # Update guacamole access
             await websocket.send_text("[EDIT] Updating Guacamole Resources...")
             await guacamole.update_guacamole_resources(
