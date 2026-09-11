@@ -52,7 +52,7 @@ async def update_guacamole_resources(db_session: Session,
     try:
         guac = Guacamole(GUACAMOLE_URL, username=GUAC_ADMIN_USER, password=GUAC_ADMIN_PASS)
 
-        await websocket.send_text(f"[EDIT] [GUACAMOLE] Successfully connected to Guacamole.")
+        await websocket.send_text(f"[GUACAMOLE] [EDIT] Successfully connected to Guacamole.")
         # -------------------------------------------------------------
         # Rename guacamole connection
         # -------------------------------------------------------------
@@ -166,10 +166,11 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
         await websocket.send_text(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
         logging.info(f"[GUACAMOLE] Successfully created connection: '{vm_data.name}' (ID: {vm_data.guac_conn_id})")
     except TypeError as e:
-        await websocket.send_text(f"[GUACAMOLE] Error: Connection already exists.")
-        raise ValueError(f"Connection {vm_data.pve_id} already exists in guacamole. Please delete it.")
+        await websocket.send_text(f"[GUACAMOLE] Connection '{vm_data.guac_conn_id}' already exists in guacamole.")
+        logging.warning(f"[GUACAMOLE] Connection '{vm_data.guac_conn_id}' already exists in guacamole.")
 
     for guac_user_mail in vm_data.guac_users:
+        await websocket.send_text(f"[GUACAMOLE] Registring user '{guac_user_mail}' to guacamole.")
         register_new_user(db_session, guac, guac_user_mail, vm_data.guac_conn_id)
 
     db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
