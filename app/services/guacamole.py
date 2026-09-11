@@ -121,6 +121,7 @@ def register_new_user(db_session: Session, websocket: WebSocket, guac: Guacamole
         )
     except HTTPError as e:
         logging.error(f"[GUACAMOLE] Failed to assign connection in Guacamole: {str(e)}")
+        websocket.send_text(f"[GUACAMOLE] Failed to assign connection in Guacamole: {str(e)}")
 
 # --------------------------------------------
 # Connection
