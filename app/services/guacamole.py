@@ -69,7 +69,7 @@ async def update_guacamole_resources(db_session: Session,
         # Create new student connection and access
         # -------------------------------------------------------------
         for email in add_emails:
-            register_new_user(db_session, websocket, guac, email, connection_id)
+            register_new_user(db_session, guac, email, connection_id)
             
     except HTTPError as http_err:
         status = http_err.response.status_code
@@ -98,7 +98,7 @@ def delete_user(db_session: Session, guac: Guacamole, email: str, connection_id:
             logging.error(f"Guacamole API HTTPError: {e.response.text if hasattr(e.response, 'text') else str(e)}")
             raise
 
-def register_new_user(db_session: Session, websocket: WebSocket, guac: Guacamole, email: str, connection_id: int):
+def register_new_user(db_session: Session, guac: Guacamole, email: str, connection_id: int):
     # Create guacamole user if doesn't exist
     try:
         guac.users.user_details(email)
@@ -112,7 +112,6 @@ def register_new_user(db_session: Session, websocket: WebSocket, guac: Guacamole
 
     # Assign connection
     logging.info(f"[GUACAMOLE] Assign connection for user '{email}' -> '{connection_id}'")
-    websocket.send_text(f"[GUACAMOLE] Assign connection for user '{email}' -> '{connection_id}'")
     try:
         guac.users.assign_connection(
             username=email,
@@ -121,7 +120,6 @@ def register_new_user(db_session: Session, websocket: WebSocket, guac: Guacamole
         )
     except HTTPError as e:
         logging.error(f"[GUACAMOLE] Failed to assign connection in Guacamole: {str(e)}")
-        websocket.send_text(f"[GUACAMOLE] Failed to assign connection in Guacamole: {str(e)}")
 
 # --------------------------------------------
 # Connection
@@ -172,7 +170,7 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
         raise ValueError(f"Connection {vm_data.pve_id} already exists in guacamole. Please delete it.")
 
     for guac_user_mail in vm_data.guac_users:
-        register_new_user(db_session, websocket, guac, guac_user_mail, vm_data.guac_conn_id)
+        register_new_user(db_session, guac, guac_user_mail, vm_data.guac_conn_id)
 
     db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
     await websocket.send_text(f"[GUACAMOLE] Successfully registered users.")    
