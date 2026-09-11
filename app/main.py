@@ -48,15 +48,6 @@ async def read_dashboard(
     stmt = select(db.VMConfig).order_by(db.VMConfig.id.desc())
     configs = db_session.scalars(stmt).all()
 
-    for config in configs:
-        # Process the comma-separated string into a list
-        if config.guac_users:
-            config.parsed_guac_users = [
-                u.strip() for u in config.guac_users.split(",") if u.strip()
-            ]
-        else:
-            config.parsed_guac_users = []
-
     return templates.TemplateResponse(
         request=request,
         name="index.html",
