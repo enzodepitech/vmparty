@@ -172,6 +172,7 @@ async def register_guacamole_access_single_user(db_session: Session, websocket: 
         raise ValueError(f"Connection {vm_data.pve_id} already exists in guacamole. Please delete it.")
 
     for guac_user_mail in vm_data.guac_users:
+        await websocket.send_text(f"[GUACAMOLE] Registering user '{guac_user_mail}'...")
         register_new_user(db_session, websocket, guac, guac_user_mail, vm_data.guac_conn_id)
 
     db.vm_update_status(db_session, vm_data.id, db.VMStatus.registered)
