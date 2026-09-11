@@ -78,7 +78,7 @@
                 <td class="p-4">
                   <p class="p-1 w-full"> {{ config.ip }} </p>
                 </td>
-                <td>
+                <td class="p-4">
                   <ul>
                     {% for user in config.guac_users %}
                       <li>{{ user }}</li>
@@ -87,7 +87,7 @@
                     {% endfor %}
                   </ul>
                 </td>
-                <td class="flex gap-2 justify-center items-center p-4">
+                <td class="p-4 w-px whitespace-nowrap">
                   <!-- Provide Button (Cube icon) -->
                   <button type="button" 
                           onclick="startProvide({{ config.id }})"
